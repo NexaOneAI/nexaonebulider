@@ -34,17 +34,32 @@ export const authService = {
   },
 
   async getProfile(userId: string): Promise<Profile | null> {
-    try {
-      const { data, error } = await supabase
-        .from('profiles' as never)
-        .select('*')
-        .eq('id' as never, userId as never)
-        .single();
-      if (error || !data) return null;
-      return data as unknown as Profile;
-    } catch {
-      return null;
-    }
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      email: data.email,
+      full_name: data.full_name,
+      avatar_url: data.avatar_url,
+      plan: data.plan,
+      credits: data.credits,
+      is_unlimited: data.is_unlimited,
+      created_at: data.created_at,
+      role: 'user', // role comes from user_roles table
+    };
+  },
+
+  async getUserRole(userId: string): Promise<'user' | 'admin'> {
+    const { data } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId);
+    const roles = data?.map((r) => r.role) ?? [];
+    return roles.includes('admin') ? 'admin' : 'user';
   },
 
   onAuthStateChange(callback: (event: string, session: import('@supabase/supabase-js').Session | null) => void) {
