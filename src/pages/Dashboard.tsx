@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Plus, Zap, Clock, Folder, ArrowRight, Sparkles } from 'lucide-react';
+import { Zap, Clock, Folder, ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
 import { TemplateGallery } from '@/components/templates/TemplateGallery';
@@ -80,6 +80,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      <TemplateGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
     </AppShell>
   );
 }
