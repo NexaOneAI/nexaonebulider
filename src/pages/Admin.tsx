@@ -110,7 +110,7 @@ export default function Admin() {
     enterprise: 'bg-accent/20 text-accent',
   };
 
-  if (loading) return <AppShell><Loader text="Cargando panel admin..." /></AppShell>;
+  if (loading) return <AppShell><div className="flex min-h-[60vh] items-center justify-center"><Loader size="lg" /></div></AppShell>;
 
   return (
     <AppShell>
