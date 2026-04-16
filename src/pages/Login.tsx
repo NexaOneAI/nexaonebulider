@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -45,13 +46,26 @@ export default function Login() {
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="mt-1.5" />
           </div>
           <div>
-            <Label htmlFor="password">Contraseña</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Contraseña</Label>
+              <Link to="/forgot-password" className="text-xs font-medium text-primary hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </div>
             <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="mt-1.5" />
           </div>
           <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" disabled={loading}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Iniciar sesión
           </Button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">o</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton />
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           ¿No tienes cuenta? <Link to="/register" className="font-medium text-primary hover:underline">Regístrate</Link>
         </p>
