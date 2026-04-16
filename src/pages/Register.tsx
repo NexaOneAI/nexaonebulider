@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { GoogleButton } from '@/components/auth/GoogleButton';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -58,6 +59,14 @@ export default function Register() {
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Crear cuenta
           </Button>
         </form>
+
+        <div className="my-6 flex items-center gap-3">
+          <div className="h-px flex-1 bg-border" />
+          <span className="text-xs text-muted-foreground">o</span>
+          <div className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleButton label="Registrarse con Google" />
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           ¿Ya tienes cuenta? <Link to="/login" className="font-medium text-primary hover:underline">Inicia sesión</Link>
         </p>
