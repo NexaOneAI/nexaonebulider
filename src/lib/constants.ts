@@ -36,10 +36,10 @@ export const CREDIT_COSTS = {
 } as const;
 
 export const CREDIT_PACKAGES = [
-  { id: 'starter', name: 'Starter', credits: 50, price_mxn: 99 },
+  { id: 'starter', name: 'Starter', credits: 50, price_mxn: 99, popular: false },
   { id: 'builder', name: 'Builder', credits: 150, price_mxn: 249, popular: true },
-  { id: 'pro', name: 'Pro', credits: 500, price_mxn: 699 },
-  { id: 'enterprise', name: 'Enterprise', credits: 2000, price_mxn: 2499 },
+  { id: 'pro', name: 'Pro', credits: 500, price_mxn: 699, popular: false },
+  { id: 'enterprise', name: 'Enterprise', credits: 2000, price_mxn: 2499, popular: false },
 ] as const;
 
 export const VIEW_MODES = {
