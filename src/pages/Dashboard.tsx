@@ -1,34 +1,22 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Plus, Zap, Clock, Folder, ArrowRight } from 'lucide-react';
+import { Zap, Clock, Folder, ArrowRight, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
-import { projectsService } from '@/features/projects/projectsService';
-import { toast } from 'sonner';
+import { TemplateGallery } from '@/components/templates/TemplateGallery';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { projects, fetchProjects } = useProjects();
-  const { user } = useAuth();
+  const { projects } = useProjects();
   const navigate = useNavigate();
-
-  const handleNewProject = async () => {
-    if (!user) return;
-    try {
-      const project = await projectsService.create({ user_id: user.id, name: 'Mi proyecto' });
-      if (project) {
-        navigate(`/builder/${project.id}`);
-      }
-    } catch {
-      toast.error('Error al crear proyecto');
-    }
-  };
+  const [galleryOpen, setGalleryOpen] = useState(false);
 
   return (
     <AppShell>
@@ -60,9 +48,9 @@ export default function Dashboard() {
           ))}
         </div>
 
-        <div className="mb-8">
-          <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProject}>
-            <Plus className="mr-2 h-4 w-4" /> Nuevo proyecto
+        <div className="mb-8 flex flex-wrap gap-3">
+          <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setGalleryOpen(true)}>
+            <Sparkles className="mr-2 h-4 w-4" /> Nuevo proyecto
           </Button>
         </div>
 
@@ -71,10 +59,10 @@ export default function Dashboard() {
           <EmptyState
             icon={<Folder className="h-10 w-10" />}
             title="Aún no tienes proyectos"
-            description="Crea tu primera app con IA"
+            description="Empieza con una plantilla o desde cero"
             action={
-              <Button variant="outline" onClick={handleNewProject}>
-                Crear proyecto <ArrowRight className="ml-2 h-4 w-4" />
+              <Button variant="outline" onClick={() => setGalleryOpen(true)}>
+                Elegir plantilla <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             }
           />
@@ -92,6 +80,7 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+      <TemplateGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
     </AppShell>
   );
 }
