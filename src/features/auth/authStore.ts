@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { authService } from './authService';
 import type { AuthState, Profile } from './types';
-import type { User, Session } from '@supabase/supabase-js';
+import type { Session } from '@supabase/supabase-js';
 
 interface AuthActions {
   setSession: (session: Session | null) => void;
@@ -27,8 +27,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
       set({ session, user: session?.user ?? null, loading: false });
       if (session?.user) {
         setTimeout(async () => {
-          const profile = await authService.getProfile(session.user.id);
-          if (profile) set({ profile });
+          const [profile, role] = await Promise.all([
+            authService.getProfile(session.user.id),
+            authService.getUserRole(session.user.id),
+          ]);
+          if (profile) set({ profile: { ...profile, role } });
         }, 0);
       } else {
         set({ profile: null });
@@ -39,8 +42,11 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
     set({ session, user: session?.user ?? null, loading: false, initialized: true });
 
     if (session?.user) {
-      const profile = await authService.getProfile(session.user.id);
-      if (profile) set({ profile });
+      const [profile, role] = await Promise.all([
+        authService.getProfile(session.user.id),
+        authService.getUserRole(session.user.id),
+      ]);
+      if (profile) set({ profile: { ...profile, role } });
     }
   },
 

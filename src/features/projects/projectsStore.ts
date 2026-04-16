@@ -8,7 +8,7 @@ interface ProjectsState {
   loading: boolean;
   fetchProjects: (userId: string) => Promise<void>;
   fetchProject: (projectId: string) => Promise<void>;
-  createProject: (project: Partial<Project>) => Promise<Project | null>;
+  createProject: (project: { user_id: string; name: string; description?: string }) => Promise<Project | null>;
   updateProject: (projectId: string, updates: Partial<Project>) => Promise<void>;
   removeProject: (projectId: string) => Promise<void>;
 }
