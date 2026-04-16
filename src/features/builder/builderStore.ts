@@ -5,6 +5,7 @@ import type { BuilderState } from './builderTypes';
 import type { GeneratedFile } from '../projects/projectTypes';
 import type { AIMessage } from '../ai/aiTypes';
 import { generateId } from '@/lib/utils';
+import { DEFAULT_MODEL } from '@/lib/constants';
 
 interface BuilderActions {
   setProjectName: (name: string) => void;
@@ -23,7 +24,7 @@ const initialState: Omit<BuilderState, 'projectId'> = {
   messages: [],
   selectedFile: null,
   previewCode: '',
-  model: 'openai',
+  model: DEFAULT_MODEL,
   viewMode: 'desktop',
   sidebarOpen: true,
   chatOpen: true,
@@ -70,7 +71,7 @@ export const useBuilderStore = create<BuilderState & BuilderActions>((set, get) 
         id: generateId(),
         project_id: projectId,
         role: 'assistant',
-        content: `✅ ${mode === 'create' ? 'App generada' : 'App actualizada'} con ${newFiles.length} archivos. Puedes seguir editando por chat.`,
+        content: `✅ ${mode === 'create' ? 'App generada' : 'App actualizada'} con ${newFiles.length} archivos usando ${model}. Puedes seguir editando por chat.`,
         model,
         created_at: new Date().toISOString(),
       };
@@ -89,7 +90,7 @@ export const useBuilderStore = create<BuilderState & BuilderActions>((set, get) 
         id: generateId(),
         project_id: projectId,
         role: 'assistant',
-        content: `❌ Error al generar: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+        content: `❌ Error: ${error instanceof Error ? error.message : 'Error desconocido'}`,
         model,
         created_at: new Date().toISOString(),
       };

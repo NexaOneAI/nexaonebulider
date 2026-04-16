@@ -14,18 +14,22 @@ export const ROUTES = {
 } as const;
 
 export const AI_MODELS = {
-  OPENAI: 'openai',
-  CLAUDE: 'claude',
-  GEMINI: 'gemini',
-  CUSTOM: 'custom',
+  GPT5: 'openai/gpt-5',
+  GPT5_MINI: 'openai/gpt-5-mini',
+  GEMINI_PRO: 'google/gemini-2.5-pro',
+  GEMINI_FLASH: 'google/gemini-3-flash-preview',
+  GEMINI_FLASH_LITE: 'google/gemini-2.5-flash-lite',
 } as const;
 
 export const AI_MODEL_LABELS: Record<string, string> = {
-  [AI_MODELS.OPENAI]: 'OpenAI GPT-4',
-  [AI_MODELS.CLAUDE]: 'Claude 3.5',
-  [AI_MODELS.GEMINI]: 'Gemini Pro',
-  [AI_MODELS.CUSTOM]: 'Custom Model',
+  [AI_MODELS.GPT5]: 'OpenAI GPT-5',
+  [AI_MODELS.GPT5_MINI]: 'OpenAI GPT-5 Mini',
+  [AI_MODELS.GEMINI_PRO]: 'Gemini 2.5 Pro',
+  [AI_MODELS.GEMINI_FLASH]: 'Gemini 3 Flash',
+  [AI_MODELS.GEMINI_FLASH_LITE]: 'Gemini 2.5 Flash Lite',
 };
+
+export const DEFAULT_MODEL = AI_MODELS.GEMINI_FLASH;
 
 export const CREDIT_COSTS = {
   simple_task: 2,

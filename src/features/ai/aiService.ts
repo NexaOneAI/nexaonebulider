@@ -1,18 +1,25 @@
-import { getProvider } from './aiRouter';
+import { supabase } from '@/integrations/supabase/client';
 import type { AIStructuredResponse } from './aiTypes';
-import { delay } from '@/lib/utils';
+import { DEFAULT_MODEL } from '@/lib/constants';
 
 export const aiService = {
   async generateApp(prompt: string, model: string): Promise<AIStructuredResponse> {
-    const provider = getProvider(model);
-    // Simulate network latency — will be replaced with real edge function
-    await delay(1500);
-    return provider.generate(prompt);
+    const { data, error } = await supabase.functions.invoke('generate-app', {
+      body: { prompt, model: model || DEFAULT_MODEL, mode: 'create' },
+    });
+
+    if (error) throw new Error(error.message || 'Error al generar la app');
+    if (data?.error) throw new Error(data.error);
+    return data as AIStructuredResponse;
   },
 
   async editApp(prompt: string, model: string, currentFiles: string): Promise<AIStructuredResponse> {
-    const provider = getProvider(model);
-    await delay(1200);
-    return provider.edit(prompt, currentFiles);
+    const { data, error } = await supabase.functions.invoke('generate-app', {
+      body: { prompt, model: model || DEFAULT_MODEL, mode: 'edit', currentFiles },
+    });
+
+    if (error) throw new Error(error.message || 'Error al editar la app');
+    if (data?.error) throw new Error(data.error);
+    return data as AIStructuredResponse;
   },
 };
