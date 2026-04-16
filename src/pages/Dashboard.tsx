@@ -61,7 +61,7 @@ export default function Dashboard() {
         </div>
 
         <div className="mb-8">
-          <Button className="bg-gradient-primary hover:opacity-90" onClick={() => navigate(`/builder/${generateId()}`)}>
+          <Button className="bg-gradient-primary hover:opacity-90" onClick={handleNewProject}>
             <Plus className="mr-2 h-4 w-4" /> Nuevo proyecto
           </Button>
         </div>
