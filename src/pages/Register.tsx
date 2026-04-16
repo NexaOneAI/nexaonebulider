@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { authService } from '@/features/auth/authService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,16 +17,14 @@ export default function Register() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
-      email, password,
-      options: { data: { full_name: fullName }, emailRedirectTo: window.location.origin }
-    });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await authService.signUp({ email, password, full_name: fullName });
       toast.success('Cuenta creada. Revisa tu email para confirmar.');
       navigate('/dashboard');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al registrar');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -43,32 +41,25 @@ export default function Register() {
           <h1 className="text-2xl font-bold">Crea tu cuenta</h1>
           <p className="mt-1 text-sm text-muted-foreground">Empieza a construir con IA</p>
         </div>
-
         <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <Label htmlFor="name">Nombre completo</Label>
-            <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)}
-              placeholder="Tu nombre" required className="mt-1.5" />
+            <Input id="name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre" required className="mt-1.5" />
           </div>
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com" required className="mt-1.5" />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="mt-1.5" />
           </div>
           <div>
             <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="Mínimo 6 caracteres" required minLength={6} className="mt-1.5" />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} className="mt-1.5" />
           </div>
           <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Crear cuenta
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Crear cuenta
           </Button>
         </form>
-
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          ¿Ya tienes cuenta?{' '}
-          <Link to="/login" className="font-medium text-primary hover:underline">Inicia sesión</Link>
+          ¿Ya tienes cuenta? <Link to="/login" className="font-medium text-primary hover:underline">Inicia sesión</Link>
         </p>
       </div>
     </div>

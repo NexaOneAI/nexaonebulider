@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { authService } from '@/features/auth/authService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,12 +16,13 @@ export default function Login() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
+    try {
+      await authService.signIn({ email, password });
       navigate('/dashboard');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Error al iniciar sesión');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -38,27 +39,21 @@ export default function Login() {
           <h1 className="text-2xl font-bold">Bienvenido de vuelta</h1>
           <p className="mt-1 text-sm text-muted-foreground">Inicia sesión en tu cuenta</p>
         </div>
-
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <Label htmlFor="email">Email</Label>
-            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-              placeholder="tu@email.com" required className="mt-1.5" />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tu@email.com" required className="mt-1.5" />
           </div>
           <div>
             <Label htmlFor="password">Contraseña</Label>
-            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••" required className="mt-1.5" />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="mt-1.5" />
           </div>
           <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90" disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Iniciar sesión
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Iniciar sesión
           </Button>
         </form>
-
         <p className="mt-6 text-center text-sm text-muted-foreground">
-          ¿No tienes cuenta?{' '}
-          <Link to="/register" className="font-medium text-primary hover:underline">Regístrate</Link>
+          ¿No tienes cuenta? <Link to="/register" className="font-medium text-primary hover:underline">Regístrate</Link>
         </p>
       </div>
     </div>

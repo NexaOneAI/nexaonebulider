@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
-import { Navbar } from '@/components/layout/Navbar';
+import { useAuth } from '@/hooks/useAuth';
+import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
 import { Zap, Code2, Layers, Rocket, ArrowRight, Sparkles, Globe, Download } from 'lucide-react';
@@ -9,16 +9,13 @@ import { Zap, Code2, Layers, Rocket, ArrowRight, Sparkles, Globe, Download } fro
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
 export default function Landing() {
-  const { session, initialize } = useAuthStore();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => { initialize(); }, [initialize]);
-  useEffect(() => { if (session) navigate('/dashboard'); }, [session, navigate]);
+  useEffect(() => { if (isAuthenticated) navigate('/dashboard'); }, [isAuthenticated, navigate]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
-
+    <AppShell>
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_-20%,hsl(200_90%_48%/0.12),transparent_70%)]" />
@@ -40,9 +37,7 @@ export default function Landing() {
               <Button size="lg" className="bg-gradient-primary px-8 hover:opacity-90" onClick={() => navigate('/register')}>
                 Empezar gratis <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" onClick={() => navigate('/login')}>
-                Ya tengo cuenta
-              </Button>
+              <Button size="lg" variant="outline" onClick={() => navigate('/login')}>Ya tengo cuenta</Button>
             </div>
           </motion.div>
         </div>
@@ -52,9 +47,7 @@ export default function Landing() {
       <section className="border-t border-border/50 py-20">
         <div className="container">
           <motion.h2 initial="hidden" whileInView="visible" viewport={{ once: true }} variants={fadeUp}
-            className="mb-12 text-center text-3xl font-bold">
-            Todo lo que necesitas para crear
-          </motion.h2>
+            className="mb-12 text-center text-3xl font-bold">Todo lo que necesitas para crear</motion.h2>
           <div className="grid gap-6 md:grid-cols-3">
             {[
               { icon: Code2, title: 'Generación con IA', desc: 'Escribe lo que quieres y la IA genera el código completo de tu aplicación.' },
@@ -91,8 +84,7 @@ export default function Landing() {
               { step: '04', title: 'Exporta o despliega', desc: 'Descarga el ZIP o despliega directamente.' },
             ].map((item, i) => (
               <motion.div key={i} initial="hidden" whileInView="visible" viewport={{ once: true }}
-                variants={fadeUp} transition={{ delay: i * 0.1 }}
-                className="flex gap-6">
+                variants={fadeUp} transition={{ delay: i * 0.1 }} className="flex gap-6">
                 <span className="text-3xl font-extrabold text-gradient">{item.step}</span>
                 <div>
                   <h3 className="mb-1 text-lg font-semibold">{item.title}</h3>
@@ -156,6 +148,6 @@ export default function Landing() {
           <p>© 2026. Todos los derechos reservados.</p>
         </div>
       </footer>
-    </div>
+    </AppShell>
   );
 }
