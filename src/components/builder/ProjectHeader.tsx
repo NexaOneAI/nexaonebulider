@@ -5,20 +5,33 @@ import { ModelSelector } from './ModelSelector';
 import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
+import { useBuilderStore } from '@/features/builder/builderStore';
 import { exportProjectZip } from '@/features/builder/zipExport';
+import { useAuth } from '@/hooks/useAuth';
 
 export function ProjectHeader() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const {
     projectName, setProjectName, model, setModel,
     viewMode, setViewMode, sidebarOpen, toggleSidebar,
     chatOpen, toggleChat, files,
   } = useBuilder();
+  const creditsRemaining = useBuilderStore((s) => s.creditsRemaining);
+
+  const displayCredits = creditsRemaining >= 0
+    ? creditsRemaining
+    : profile?.credits ?? '--';
 
   const handleExport = async () => {
     if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
     await exportProjectZip(projectName, files);
-    toast.success('Proyecto exportado');
+    toast.success('Proyecto exportado como ZIP');
+  };
+
+  const handleSave = () => {
+    if (files.length === 0) { toast.info('Genera una app primero'); return; }
+    toast.success('Versión guardada automáticamente');
   };
 
   return (
@@ -53,13 +66,23 @@ export function ProjectHeader() {
         <ModelSelector value={model} onChange={setModel} />
         <div className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
           <Zap className="h-3 w-3 text-primary" />
-          <span className="text-xs font-medium">--</span>
+          <span className="text-xs font-medium">{displayCredits}</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Guardando...')}><Save className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Historial de versiones')}><History className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}><Download className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}><Rocket className="h-4 w-4" /></Button>
-        <Button variant="ghost" size="icon" className={`h-8 w-8 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}><MessageSquare className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
+          <Save className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Historial de versiones próximamente')}>
+          <History className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}>
+          <Download className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}>
+          <Rocket className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className={`h-8 w-8 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}>
+          <MessageSquare className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
