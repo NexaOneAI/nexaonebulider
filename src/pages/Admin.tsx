@@ -1,4 +1,5 @@
-import { Navbar } from '@/components/layout/Navbar';
+import { AppShell } from '@/components/layout/AppShell';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { Shield, Users, CreditCard, Folder, Activity } from 'lucide-react';
 
 export default function Admin() {
@@ -10,8 +11,7 @@ export default function Admin() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <AppShell>
       <div className="container py-8">
         <div className="mb-8 flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-primary">
@@ -37,12 +37,12 @@ export default function Admin() {
           ))}
         </div>
 
-        <div className="rounded-xl border border-dashed border-border/50 bg-card/50 p-12 text-center">
-          <Shield className="mx-auto mb-3 h-10 w-10 text-muted-foreground/50" />
-          <p className="text-lg font-medium text-muted-foreground">Panel de administración</p>
-          <p className="mt-1 text-sm text-muted-foreground/70">Conecta la base de datos para ver usuarios, créditos y proyectos</p>
-        </div>
+        <EmptyState
+          icon={<Shield className="h-10 w-10" />}
+          title="Panel de administración"
+          description="Conecta la base de datos para ver usuarios, créditos y proyectos"
+        />
       </div>
-    </div>
+    </AppShell>
   );
 }

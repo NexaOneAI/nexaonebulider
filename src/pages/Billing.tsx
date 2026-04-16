@@ -1,21 +1,20 @@
-import { Navbar } from '@/components/layout/Navbar';
-import { useAuthStore } from '@/stores/authStore';
+import { AppShell } from '@/components/layout/AppShell';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { CREDIT_PACKAGES } from '@/types';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { CREDIT_PACKAGES } from '@/lib/constants';
 import { Zap, CreditCard, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function Billing() {
-  const { profile } = useAuthStore();
+  const { profile } = useAuth();
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navbar />
+    <AppShell>
       <div className="container py-8">
         <h1 className="mb-2 text-3xl font-bold">Billing & Créditos</h1>
         <p className="mb-8 text-muted-foreground">Gestiona tu saldo y compra paquetes</p>
 
-        {/* Current balance */}
         <div className="mb-8 flex items-center gap-4 rounded-xl border border-border/50 bg-card p-6 shadow-card">
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary">
             <Zap className="h-6 w-6 text-primary-foreground" />
@@ -26,7 +25,6 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Packages */}
         <h2 className="mb-4 text-xl font-semibold">Paquetes de créditos</h2>
         <div className="mb-8 grid gap-4 md:grid-cols-4">
           {CREDIT_PACKAGES.map((pkg) => (
@@ -45,13 +43,12 @@ export default function Billing() {
           ))}
         </div>
 
-        {/* Transaction history */}
         <h2 className="mb-4 text-xl font-semibold">Historial de transacciones</h2>
-        <div className="rounded-xl border border-dashed border-border/50 bg-card/50 p-12 text-center">
-          <Clock className="mx-auto mb-3 h-8 w-8 text-muted-foreground/50" />
-          <p className="text-muted-foreground">No hay transacciones aún</p>
-        </div>
+        <EmptyState
+          icon={<Clock className="h-8 w-8" />}
+          title="No hay transacciones aún"
+        />
       </div>
-    </div>
+    </AppShell>
   );
 }

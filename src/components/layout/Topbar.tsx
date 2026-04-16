@@ -1,10 +1,10 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Zap, LogOut, LayoutDashboard, CreditCard, Shield } from 'lucide-react';
 
-export function Navbar() {
-  const { session, profile, signOut } = useAuthStore();
+export function Topbar() {
+  const { session, profile, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -26,35 +26,28 @@ export function Navbar() {
           {session ? (
             <>
               <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')}>
-                <LayoutDashboard className="mr-1.5 h-4 w-4" />
-                Dashboard
+                <LayoutDashboard className="mr-1.5 h-4 w-4" /> Dashboard
               </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/billing')}>
-                <CreditCard className="mr-1.5 h-4 w-4" />
-                Billing
+                <CreditCard className="mr-1.5 h-4 w-4" /> Billing
               </Button>
-              {profile?.role === 'admin' && (
+              {isAdmin && (
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>
-                  <Shield className="mr-1.5 h-4 w-4" />
-                  Admin
+                  <Shield className="mr-1.5 h-4 w-4" /> Admin
                 </Button>
               )}
               <div className="ml-2 flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5">
                 <Zap className="h-3.5 w-3.5 text-primary" />
                 <span className="text-sm font-medium">{profile?.credits ?? 0}</span>
               </div>
-              <Button variant="ghost" size="sm" onClick={handleSignOut}>
+              <Button variant="ghost" size="icon" onClick={handleSignOut}>
                 <LogOut className="h-4 w-4" />
               </Button>
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>
-                Iniciar sesión
-              </Button>
-              <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={() => navigate('/register')}>
-                Registrarse
-              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>Iniciar sesión</Button>
+              <Button size="sm" className="bg-gradient-primary hover:opacity-90" onClick={() => navigate('/register')}>Registrarse</Button>
             </>
           )}
         </div>
