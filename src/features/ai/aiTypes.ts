@@ -22,11 +22,13 @@ export interface AIProviderConfig {
   name: string;
   label: string;
   available: boolean;
+  provider: 'openai' | 'google';
 }
 
 export const AI_PROVIDERS: AIProviderConfig[] = [
-  { id: 'openai', name: 'OpenAI', label: 'OpenAI GPT-4', available: true },
-  { id: 'claude', name: 'Claude', label: 'Claude 3.5', available: true },
-  { id: 'gemini', name: 'Gemini', label: 'Gemini Pro', available: true },
-  { id: 'custom', name: 'Custom', label: 'Custom Model', available: true },
+  { id: 'openai/gpt-5', name: 'GPT-5', label: 'OpenAI GPT-5', available: true, provider: 'openai' },
+  { id: 'openai/gpt-5-mini', name: 'GPT-5 Mini', label: 'OpenAI GPT-5 Mini', available: true, provider: 'openai' },
+  { id: 'google/gemini-2.5-pro', name: 'Gemini Pro', label: 'Gemini 2.5 Pro', available: true, provider: 'google' },
+  { id: 'google/gemini-3-flash-preview', name: 'Gemini Flash', label: 'Gemini 3 Flash', available: true, provider: 'google' },
+  { id: 'google/gemini-2.5-flash-lite', name: 'Gemini Lite', label: 'Gemini 2.5 Lite', available: true, provider: 'google' },
 ];

@@ -3,8 +3,8 @@ import { exportProjectZip } from './zipExport';
 import type { GeneratedFile } from '../projects/projectTypes';
 
 export const builderService = {
-  generateApp: aiService.generateApp,
-  editApp: aiService.editApp,
+  generateApp: aiService.generateApp.bind(aiService),
+  editApp: aiService.editApp.bind(aiService),
   exportZip: exportProjectZip,
 
   getFileLanguage(path: string): string {

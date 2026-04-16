@@ -1,14 +1,12 @@
-import { openaiProvider, claudeProvider, geminiProvider, customProvider } from './providers/openai';
-import type { AIProviderAdapter } from './providers/openai';
+// AI routing is now handled server-side via the generate-app edge function.
+// This file is kept for backward compatibility but the actual routing
+// happens in supabase/functions/generate-app/index.ts
+
 import { AI_MODELS } from '@/lib/constants';
 
-const providerMap: Record<string, AIProviderAdapter> = {
-  [AI_MODELS.OPENAI]: openaiProvider,
-  [AI_MODELS.CLAUDE]: claudeProvider,
-  [AI_MODELS.GEMINI]: geminiProvider,
-  [AI_MODELS.CUSTOM]: customProvider,
-};
-
-export function getProvider(model: string): AIProviderAdapter {
-  return providerMap[model] ?? providerMap[AI_MODELS.OPENAI];
+export function getModelId(model: string): string {
+  // If already a full model ID (e.g. "openai/gpt-5"), return as-is
+  if (model.includes('/')) return model;
+  // Default fallback
+  return AI_MODELS.GEMINI_FLASH;
 }
