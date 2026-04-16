@@ -4,7 +4,9 @@ import { useAuth } from '@/hooks/useAuth';
 import { AppShell } from '@/components/layout/AppShell';
 import { Button } from '@/components/ui/button';
 import { motion } from 'framer-motion';
-import { Zap, Code2, Layers, Rocket, ArrowRight, Sparkles, Globe, Download } from 'lucide-react';
+import { Zap, Code2, Layers, Rocket, ArrowRight, Sparkles, Globe, Download, Facebook, MessageCircle, Music2 } from 'lucide-react';
+
+const PROMO_VIDEO = 'https://files.manuscdn.com/user_upload_by_module/session_file/310519663519690978/YThcwHUIkZPggRHo.mp4';
 
 const fadeUp = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
 
