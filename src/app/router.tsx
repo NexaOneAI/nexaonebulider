@@ -5,6 +5,7 @@ import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
+import Install from '@/pages/Install';
 import Dashboard from '@/pages/Dashboard';
 import Builder from '@/pages/Builder';
 import ProjectDetail from '@/pages/ProjectDetail';
