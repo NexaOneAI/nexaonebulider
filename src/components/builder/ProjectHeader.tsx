@@ -1,0 +1,66 @@
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ModelSelector } from './ModelSelector';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import { useBuilder } from '@/hooks/useBuilder';
+import { exportProjectZip } from '@/features/builder/zipExport';
+
+export function ProjectHeader() {
+  const navigate = useNavigate();
+  const {
+    projectName, setProjectName, model, setModel,
+    viewMode, setViewMode, sidebarOpen, toggleSidebar,
+    chatOpen, toggleChat, files,
+  } = useBuilder();
+
+  const handleExport = async () => {
+    if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
+    await exportProjectZip(projectName, files);
+    toast.success('Proyecto exportado');
+  };
+
+  return (
+    <div className="flex h-12 items-center justify-between border-b border-border/50 bg-card/80 px-3 backdrop-blur-xl">
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/dashboard')}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className={`h-8 w-8 ${sidebarOpen ? 'text-primary' : ''}`} onClick={toggleSidebar}>
+          <PanelLeft className="h-4 w-4" />
+        </Button>
+        <div className="mx-2 h-5 w-px bg-border" />
+        <Input value={projectName} onChange={(e) => setProjectName(e.target.value)}
+          className="h-8 w-48 border-none bg-transparent px-2 text-sm font-medium focus-visible:ring-1" />
+      </div>
+
+      <div className="flex items-center gap-1">
+        {([
+          ['desktop', Monitor],
+          ['tablet', Tablet],
+          ['mobile', Smartphone],
+        ] as const).map(([mode, Icon]) => (
+          <Button key={mode} variant="ghost" size="icon"
+            className={`h-8 w-8 ${viewMode === mode ? 'text-primary' : ''}`}
+            onClick={() => setViewMode(mode)}>
+            <Icon className="h-4 w-4" />
+          </Button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2">
+        <ModelSelector value={model} onChange={setModel} />
+        <div className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+          <Zap className="h-3 w-3 text-primary" />
+          <span className="text-xs font-medium">--</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Guardando...')}><Save className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Historial de versiones')}><History className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}><Download className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}><Rocket className="h-4 w-4" /></Button>
+        <Button variant="ghost" size="icon" className={`h-8 w-8 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}><MessageSquare className="h-4 w-4" /></Button>
+      </div>
+    </div>
+  );
+}
