@@ -1,30 +1,86 @@
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
-import { Monitor } from 'lucide-react';
+import { Monitor, Code2, Eye } from 'lucide-react';
 import { VIEW_WIDTHS } from '@/lib/constants';
+import { Button } from '@/components/ui/button';
+import { useBuilderStore } from '@/features/builder/builderStore';
 
 export function PreviewPanel() {
-  const { previewCode, viewMode, selectedFile } = useBuilder();
+  const { previewCode, viewMode, selectedFile, files } = useBuilder();
+  const showCode = useBuilderStore((s) => s.showCode);
+  const setShowCode = useBuilderStore((s) => s.setShowCode);
+  const setSelectedFile = useBuilderStore((s) => s.setSelectedFile);
+
   const hasContent = previewCode || selectedFile;
+  const showingCode = showCode && selectedFile;
 
   return (
     <div className="flex flex-1 flex-col bg-background">
+      {/* Toolbar */}
+      {hasContent && (
+        <div className="flex items-center gap-2 border-b border-border/50 bg-card/50 px-4 py-2">
+          <Button
+            variant={!showingCode ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              setShowCode(false);
+              setSelectedFile(null);
+            }}
+          >
+            <Eye className="mr-1 h-3 w-3" />
+            Preview
+          </Button>
+          <Button
+            variant={showingCode ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => {
+              if (!selectedFile && files.length > 0) {
+                setSelectedFile(files[0]);
+              }
+              setShowCode(true);
+            }}
+          >
+            <Code2 className="mr-1 h-3 w-3" />
+            Código
+          </Button>
+          {selectedFile && showingCode && (
+            <span className="ml-2 font-mono text-xs text-muted-foreground">
+              {selectedFile.path}
+            </span>
+          )}
+        </div>
+      )}
+
       {hasContent ? (
         <div className="flex flex-1 items-start justify-center overflow-auto p-4">
-          <div className="h-full w-full overflow-auto rounded-lg border border-border/50 bg-card shadow-elevated transition-all"
-            style={{ maxWidth: VIEW_WIDTHS[viewMode] }}>
-            {selectedFile ? (
+          <div
+            className="h-full w-full overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated transition-all"
+            style={{ maxWidth: VIEW_WIDTHS[viewMode] }}
+          >
+            {showingCode && selectedFile ? (
               <CodeEditor file={selectedFile} />
             ) : previewCode ? (
-              <iframe srcDoc={previewCode} className="h-full w-full min-h-[500px]" sandbox="allow-scripts" title="Preview" />
+              <iframe
+                srcDoc={previewCode}
+                className="h-full w-full min-h-[600px]"
+                sandbox="allow-scripts allow-same-origin"
+                title="Live Preview"
+                style={{ border: 'none', background: 'white' }}
+              />
             ) : null}
           </div>
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center text-center">
-          <Monitor className="mb-4 h-16 w-16 text-muted-foreground/20" />
-          <h2 className="mb-1 text-lg font-semibold text-muted-foreground">Live Preview</h2>
-          <p className="text-sm text-muted-foreground/60">Escribe un prompt en el chat para generar tu app</p>
+          <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20">
+            <Monitor className="h-10 w-10 text-primary/50" />
+          </div>
+          <h2 className="mb-2 text-xl font-semibold text-foreground">Live Preview</h2>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            Escribe un prompt en el chat para generar tu app. La preview se actualizará en tiempo real.
+          </p>
         </div>
       )}
     </div>
