@@ -2,7 +2,7 @@ import type { GeneratedFile } from '../projects/projectTypes';
 
 /**
  * Generate a REAL live preview HTML that renders the React app
- * inside an iframe using ESM imports from esm.sh CDN
+ * inside an iframe using UMD React + Babel standalone
  */
 export function generatePreviewHtml(
   files: GeneratedFile[],
@@ -10,24 +10,36 @@ export function generatePreviewHtml(
   _model: string
 ): string {
   const appFile = files.find(
-    (f) => f.path === 'src/App.tsx' || f.path === 'src/App.jsx'
+    (f) => f.path === 'src/App.tsx' || f.path === 'src/App.jsx' || f.path === 'App.tsx' || f.path === 'App.jsx'
   );
 
   if (!appFile) {
     return generateFallbackPreview(files, projectName);
   }
 
-  // Extract JSX content from the App component
-  const appContent = appFile.content;
+  // Collect all component files (non-App, non-main)
+  const componentFiles = files.filter(
+    (f) =>
+      (f.path.endsWith('.tsx') || f.path.endsWith('.jsx')) &&
+      !f.path.includes('main.') &&
+      f.path !== appFile.path
+  );
 
   // Find CSS files
-  const cssFiles = files.filter(
-    (f) => f.path.endsWith('.css') && f.path !== 'src/index.css'
-  );
-  const cssContent = cssFiles.map((f) => f.content).join('\n');
+  const cssContent = files
+    .filter((f) => f.path.endsWith('.css'))
+    .map((f) => f.content)
+    .join('\n');
 
-  // Find index.css
-  const indexCss = files.find((f) => f.path === 'src/index.css');
+  // Build component scripts
+  const componentScripts = componentFiles
+    .map(
+      (f) =>
+        `<script type="text/babel" data-presets="react,typescript">
+${transformForPreview(f.content)}
+<\/script>`
+    )
+    .join('\n');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -43,20 +55,27 @@ export function generatePreviewHtml(
       font-family: 'Inter', system-ui, -apple-system, sans-serif;
       min-height: 100vh;
     }
-    ${indexCss?.content || ''}
     ${cssContent}
   </style>
 </head>
 <body>
   <div id="root"></div>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js"><\/script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"><\/script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-  <script type="text/babel" data-type="module">
-    ${transformForPreview(appContent)}
+  ${componentScripts}
+  <script type="text/babel" data-presets="react,typescript">
+    ${transformForPreview(appFile.content)}
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(React.createElement(App));
+    try {
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(React.createElement(App));
+    } catch (e) {
+      document.getElementById('root').innerHTML = 
+        '<div style="padding:2rem;font-family:monospace;color:#ef4444;background:#1e1e1e;min-height:100vh">' +
+        '<h2 style="color:#f97316;margin-bottom:1rem">⚠️ Preview Error</h2>' +
+        '<pre style="white-space:pre-wrap;font-size:13px">' + e.message + '</pre></div>';
+    }
   <\/script>
 </body>
 </html>`;
@@ -67,31 +86,53 @@ export function generatePreviewHtml(
  * - Remove import statements (we use UMD globals)
  * - Remove export statements
  * - Replace hooks references
+ * - Strip TypeScript annotations more aggressively
  */
 function transformForPreview(content: string): string {
   let code = content;
 
-  // Remove import lines
-  code = code.replace(/^import\s+.*?(?:from\s+['"].*?['"]|['"].*?['"]);?\s*$/gm, '');
+  // Remove import lines (multiline too)
+  code = code.replace(/^import\s+[\s\S]*?from\s+['"][^'"]*['"];?\s*$/gm, '');
+  code = code.replace(/^import\s+['"][^'"]*['"];?\s*$/gm, '');
+
+  // Remove TypeScript interfaces and type aliases BEFORE other transforms
+  code = code.replace(/^(?:export\s+)?interface\s+\w+\s*(?:extends\s+[^{]*)?\{[^}]*\}/gm, '');
+  code = code.replace(/^(?:export\s+)?type\s+\w+\s*=\s*(?:\{[^}]*\}|[^;]+);/gm, '');
 
   // Replace "export default function" with "function"
   code = code.replace(/export\s+default\s+function\s+/g, 'function ');
   // Replace "export default" at the end
   code = code.replace(/export\s+default\s+(\w+);?\s*$/gm, '');
-  // Replace "export function" 
+  // Replace "export function"
   code = code.replace(/export\s+function\s+/g, 'function ');
   // Replace "export const"
   code = code.replace(/export\s+const\s+/g, 'const ');
 
   // Use React globals for hooks
-  code = code.replace(/\b(useState|useEffect|useCallback|useMemo|useRef|useContext|useReducer)\b/g, 'React.$1');
+  code = code.replace(
+    /\b(useState|useEffect|useCallback|useMemo|useRef|useContext|useReducer|Fragment)\b/g,
+    'React.$1'
+  );
 
-  // Remove TypeScript type annotations for browser compatibility
+  // Remove TypeScript type annotations
+  // Function parameter types: (x: string, y: number)
+  code = code.replace(/(\w+)\s*:\s*(?:string|number|boolean|any|void|null|undefined|object|never|unknown)(?:\[\])?\s*(?=[,)\]=])/g, '$1');
+  // Return type annotations
+  code = code.replace(/\)\s*:\s*(?:React\.)?(?:JSX\.Element|FC|ReactNode|ReactElement|string|number|boolean|void|any|null|undefined)(?:\s*\|[^{=]*?)?(?=\s*[{=])/g, ')');
+  // Generic type parameters on functions
+  code = code.replace(/<(?:string|number|boolean|any|void|null|undefined|[A-Z]\w*(?:Props|Type|State|Config|Options)?)(?:\s*,\s*(?:string|number|boolean|any|[A-Z]\w*))*>/g, '');
+  // Type assertions: as SomeType
+  code = code.replace(/\s+as\s+\w+(?:\[\])?/g, '');
+  // React.FC<Props> type annotation
   code = code.replace(/:\s*React\.FC(?:<[^>]*>)?/g, '');
-  code = code.replace(/:\s*(?:string|number|boolean|any|void|null|undefined)(?:\[\])?/g, '');
-  code = code.replace(/<[A-Z]\w*(?:Props|Type|Interface)>/g, '');
-  code = code.replace(/interface\s+\w+\s*\{[^}]*\}/g, '');
-  code = code.replace(/type\s+\w+\s*=\s*[^;]+;/g, '');
+  // Standalone React.FC<Props> = 
+  code = code.replace(/React\.FC(?:<[^>]*>)?\s*=\s*/g, '');
+
+  // Remove `satisfies` operator  
+  code = code.replace(/\s+satisfies\s+\w+(?:<[^>]*>)?/g, '');
+
+  // Remove blank lines clusters
+  code = code.replace(/\n{3,}/g, '\n\n');
 
   return code;
 }
@@ -100,7 +141,7 @@ function transformForPreview(content: string): string {
  * Fallback preview when App.tsx is not found
  */
 function generateFallbackPreview(files: GeneratedFile[], projectName: string): string {
-  const fileList = files.map((f) => `<li>${escapeHtml(f.path)}</li>`).join('');
+  const fileList = files.map((f) => `<li class="py-0.5">${escapeHtml(f.path)}</li>`).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
