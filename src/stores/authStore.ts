@@ -16,6 +16,20 @@ interface AuthState {
   signOut: () => Promise<void>;
 }
 
+async function fetchProfile(userId: string): Promise<Profile | null> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles' as never)
+      .select('*')
+      .eq('id' as never, userId as never)
+      .single();
+    if (error || !data) return null;
+    return data as unknown as Profile;
+  } catch {
+    return null;
+  }
+}
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   session: null,
@@ -30,35 +44,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   initialize: async () => {
     if (get().initialized) return;
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        set({ session, user: session?.user ?? null, loading: false });
-        if (session?.user) {
-          // Defer profile fetch to avoid deadlock
-          setTimeout(async () => {
-            const { data } = await supabase
-              .from('profiles')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            if (data) set({ profile: data as unknown as Profile });
-          }, 0);
-        } else {
-          set({ profile: null });
-        }
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      set({ session, user: session?.user ?? null, loading: false });
+      if (session?.user) {
+        setTimeout(async () => {
+          const profile = await fetchProfile(session.user.id);
+          if (profile) set({ profile });
+        }, 0);
+      } else {
+        set({ profile: null });
       }
-    );
+    });
 
     const { data: { session } } = await supabase.auth.getSession();
     set({ session, user: session?.user ?? null, loading: false, initialized: true });
 
     if (session?.user) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-      if (data) set({ profile: data as unknown as Profile });
+      const profile = await fetchProfile(session.user.id);
+      if (profile) set({ profile });
     }
   },
 
