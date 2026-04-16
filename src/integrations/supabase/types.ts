@@ -14,16 +14,308 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ai_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          model: string
+          project_id: string
+          role: Database["public"]["Enums"]["message_role"]
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          model?: string
+          project_id: string
+          role?: Database["public"]["Enums"]["message_role"]
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          model?: string
+          project_id?: string
+          role?: Database["public"]["Enums"]["message_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_messages_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      app_exports: {
+        Row: {
+          created_at: string
+          export_type: Database["public"]["Enums"]["export_type"]
+          id: string
+          project_id: string
+          user_id: string
+          zip_url: string | null
+        }
+        Insert: {
+          created_at?: string
+          export_type?: Database["public"]["Enums"]["export_type"]
+          id?: string
+          project_id: string
+          user_id: string
+          zip_url?: string | null
+        }
+        Update: {
+          created_at?: string
+          export_type?: Database["public"]["Enums"]["export_type"]
+          id?: string
+          project_id?: string
+          user_id?: string
+          zip_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "app_exports_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      credit_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          model: string | null
+          project_id: string | null
+          reason: string
+          type: Database["public"]["Enums"]["credit_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          model?: string | null
+          project_id?: string | null
+          reason: string
+          type: Database["public"]["Enums"]["credit_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          model?: string | null
+          project_id?: string | null
+          reason?: string
+          type?: Database["public"]["Enums"]["credit_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "credit_transactions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          credits: number
+          email: string
+          full_name: string | null
+          id: string
+          is_unlimited: boolean
+          plan: Database["public"]["Enums"]["user_plan"]
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          credits?: number
+          email: string
+          full_name?: string | null
+          id: string
+          is_unlimited?: boolean
+          plan?: Database["public"]["Enums"]["user_plan"]
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          credits?: number
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_unlimited?: boolean
+          plan?: Database["public"]["Enums"]["user_plan"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      project_versions: {
+        Row: {
+          created_at: string
+          generated_files: Json
+          id: string
+          model_used: string
+          output_json: Json | null
+          preview_code: string | null
+          project_id: string
+          prompt: string
+          version_number: number
+        }
+        Insert: {
+          created_at?: string
+          generated_files?: Json
+          id?: string
+          model_used?: string
+          output_json?: Json | null
+          preview_code?: string | null
+          project_id: string
+          prompt: string
+          version_number?: number
+        }
+        Update: {
+          created_at?: string
+          generated_files?: Json
+          id?: string
+          model_used?: string
+          output_json?: Json | null
+          preview_code?: string | null
+          project_id?: string
+          prompt?: string
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["project_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["project_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          amount_mxn: number
+          created_at: string
+          credits: number
+          external_payment_id: string | null
+          id: string
+          package_name: string
+          payment_provider: string
+          payment_status: Database["public"]["Enums"]["payment_status"]
+          user_id: string
+        }
+        Insert: {
+          amount_mxn: number
+          created_at?: string
+          credits: number
+          external_payment_id?: string | null
+          id?: string
+          package_name: string
+          payment_provider?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          user_id: string
+        }
+        Update: {
+          amount_mxn?: number
+          created_at?: string
+          credits?: number
+          external_payment_id?: string | null
+          id?: string
+          package_name?: string
+          payment_provider?: string
+          payment_status?: Database["public"]["Enums"]["payment_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
+      credit_type: "debit" | "credit" | "refund"
+      export_type: "zip" | "deploy"
+      message_role: "user" | "assistant" | "system"
+      payment_status: "pending" | "completed" | "failed" | "refunded"
+      project_status: "draft" | "active" | "archived"
+      user_plan: "free" | "starter" | "pro" | "enterprise"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +442,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+      credit_type: ["debit", "credit", "refund"],
+      export_type: ["zip", "deploy"],
+      message_role: ["user", "assistant", "system"],
+      payment_status: ["pending", "completed", "failed", "refunded"],
+      project_status: ["draft", "active", "archived"],
+      user_plan: ["free", "starter", "pro", "enterprise"],
+    },
   },
 } as const
