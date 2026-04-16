@@ -1,0 +1,2 @@
+/* Re-export main styles — all tokens defined in src/index.css */
+@import '../index.css';
