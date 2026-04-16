@@ -1,4 +1,4 @@
-import type { AIStructuredResponse } from './aiTypes';
+import type { AIStructuredResponse } from '../aiTypes';
 
 // Provider interface — each provider implements this
 export interface AIProviderAdapter {
