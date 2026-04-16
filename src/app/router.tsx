@@ -6,6 +6,7 @@ import Register from '@/pages/Register';
 import ForgotPassword from '@/pages/ForgotPassword';
 import ResetPassword from '@/pages/ResetPassword';
 import Install from '@/pages/Install';
+import Install from '@/pages/Install';
 import Dashboard from '@/pages/Dashboard';
 import Builder from '@/pages/Builder';
 import ProjectDetail from '@/pages/ProjectDetail';
@@ -22,6 +23,7 @@ export function AppRouter() {
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/install" element={<Install />} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/builder/:projectId" element={<ProtectedRoute><Builder /></ProtectedRoute>} />
         <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
