@@ -6,14 +6,29 @@ import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Plus, Zap, Clock, Folder, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { generateId, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
+import { projectsService } from '@/features/projects/projectsService';
+import { toast } from 'sonner';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { projects } = useProjects();
+  const { projects, fetchProjects } = useProjects();
+  const { user } = useAuth();
   const navigate = useNavigate();
+
+  const handleNewProject = async () => {
+    if (!user) return;
+    try {
+      const project = await projectsService.create({ user_id: user.id, name: 'Mi proyecto' });
+      if (project) {
+        navigate(`/builder/${project.id}`);
+      }
+    } catch {
+      toast.error('Error al crear proyecto');
+    }
+  };
 
   return (
     <AppShell>
@@ -58,7 +73,7 @@ export default function Dashboard() {
             title="Aún no tienes proyectos"
             description="Crea tu primera app con IA"
             action={
-              <Button variant="outline" onClick={() => navigate(`/builder/${generateId()}`)}>
+              <Button variant="outline" onClick={handleNewProject}>
                 Crear proyecto <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             }
