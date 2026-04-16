@@ -1,28 +1,18 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '@/stores/authStore';
-import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { Loader } from '@/components/ui/Loader';
 import Landing from './Landing';
 
 const Index = () => {
-  const { session, loading, initialized, initialize } = useAuthStore();
+  const { isAuthenticated, loading, initialized } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => { initialize(); }, [initialize]);
-
   useEffect(() => {
-    if (initialized && session) {
-      navigate('/dashboard');
-    }
-  }, [initialized, session, navigate]);
+    if (initialized && isAuthenticated) navigate('/dashboard');
+  }, [initialized, isAuthenticated, navigate]);
 
-  if (!initialized || loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (!initialized || loading) return <Loader fullScreen />;
 
   return <Landing />;
 };
