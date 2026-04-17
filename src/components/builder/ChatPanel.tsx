@@ -1,21 +1,40 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap } from 'lucide-react';
-import { AI_MODEL_LABELS } from '@/lib/constants';
+import { Bot, User, Sparkles, Zap, Gauge } from 'lucide-react';
+import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
+import type { Tier } from '@/features/ai/providers/types';
+
+const TIER_LABELS: Record<Tier, { label: string; cost: number }> = {
+  simple_task: { label: 'Tarea simple', cost: CREDIT_COSTS.simple_task },
+  simple_edit: { label: 'Edición rápida', cost: CREDIT_COSTS.simple_edit },
+  medium_module: { label: 'Módulo medio', cost: CREDIT_COSTS.medium_module },
+  complex_module: { label: 'Módulo complejo', cost: CREDIT_COSTS.complex_module },
+  full_app: { label: 'App completa', cost: CREDIT_COSTS.full_app },
+};
 
 export function ChatPanel() {
   const { messages, loading, model, sendPrompt } = useBuilder();
   const creditsRemaining = useBuilderStore((s) => s.creditsRemaining);
+  const tier = useBuilderStore((s) => s.tier);
+  const setTier = useBuilderStore((s) => s.setTier);
+  const filesCount = useBuilderStore((s) => s.files.length);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showTierMenu, setShowTierMenu] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   const modelLabel = AI_MODEL_LABELS[model] || model;
+  const isEdit = filesCount > 0;
+
+  // Default suggested tiers based on context
+  const tierOptions: Tier[] = isEdit
+    ? ['simple_edit', 'medium_module', 'complex_module']
+    : ['simple_task', 'medium_module', 'complex_module', 'full_app'];
 
   return (
     <div className="flex w-80 flex-col border-l border-border/50 bg-sidebar">
@@ -81,6 +100,54 @@ export function ChatPanel() {
           <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
             <Loader size="sm" />
             <span>Generando con {modelLabel}...</span>
+          </div>
+        )}
+      </div>
+
+      {/* Tier selector */}
+      <div className="border-t border-border/30 px-3 py-2">
+        <button
+          type="button"
+          onClick={() => setShowTierMenu((s) => !s)}
+          className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-muted/50"
+        >
+          <Gauge className="h-3 w-3" />
+          <span>Costo:</span>
+          {tier ? (
+            <span className="font-medium text-primary">
+              {TIER_LABELS[tier].label} ({TIER_LABELS[tier].cost} cr)
+            </span>
+          ) : (
+            <span>Auto (estimado por la IA)</span>
+          )}
+          <span className="ml-auto opacity-50">{showTierMenu ? '▲' : '▼'}</span>
+        </button>
+
+        {showTierMenu && (
+          <div className="mt-1.5 space-y-0.5">
+            <button
+              type="button"
+              onClick={() => { setTier(null); setShowTierMenu(false); }}
+              className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] transition-colors hover:bg-muted/50 ${
+                !tier ? 'bg-muted/50 text-foreground' : 'text-muted-foreground'
+              }`}
+            >
+              <span>Auto</span>
+              <span className="opacity-60">heurística</span>
+            </button>
+            {tierOptions.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => { setTier(t); setShowTierMenu(false); }}
+                className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] transition-colors hover:bg-muted/50 ${
+                  tier === t ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                <span>{TIER_LABELS[t].label}</span>
+                <span className="font-mono">{TIER_LABELS[t].cost} cr</span>
+              </button>
+            ))}
           </div>
         )}
       </div>
