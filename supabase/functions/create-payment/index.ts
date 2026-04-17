@@ -1,53 +1,30 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { requireUser, getAdminClient } from "../_shared/auth.ts";
 
 /**
- * create-payment: Creates a payment intent for credit packages.
- * Currently a stub — integrate with Stripe/MercadoPago when ready.
+ * create-payment: Creates a Mercado Pago Checkout Pro preference.
+ * Returns init_point URL for redirect.
  */
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const MP_TOKEN = Deno.env.get("MERCADOPAGO_ACCESS_TOKEN");
+  if (!MP_TOKEN) return jsonResponse({ error: "MERCADOPAGO_ACCESS_TOKEN no configurado" }, 500);
 
   try {
-    const { packageId, packageName, credits, amountMxn } = await req.json();
-
+    const { packageId, packageName, credits, amountMxn, returnUrl } = await req.json();
     if (!packageId || !credits || !amountMxn) {
-      return new Response(
-        JSON.stringify({ error: "packageId, credits, and amountMxn are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return jsonResponse({ error: "packageId, credits, y amountMxn son requeridos" }, 400);
     }
 
-    // Verify user
-    const authHeader = req.headers.get("Authorization") || "";
-    const userClient = createClient(supabaseUrl, anonKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
-    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    const { user, error: authError } = await requireUser(req);
+    if (authError || !user) return jsonResponse({ error: authError }, 401);
 
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: "No autorizado" }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    const admin = getAdminClient();
 
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const adminClient = createClient(supabaseUrl, serviceRoleKey);
-
-    // Create purchase record
-    const { data: purchase, error: purchaseError } = await adminClient
+    // 1. Create pending purchase
+    const { data: purchase, error: purchaseError } = await admin
       .from("purchases")
       .insert({
         user_id: user.id,
@@ -55,59 +32,81 @@ serve(async (req) => {
         credits,
         amount_mxn: amountMxn,
         payment_status: "pending",
-        payment_provider: "manual",
+        payment_provider: "mercadopago",
       })
       .select()
       .single();
 
-    if (purchaseError) {
-      return new Response(
-        JSON.stringify({ error: "Error creating purchase record" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (purchaseError || !purchase) {
+      console.error("purchase insert error:", purchaseError);
+      return jsonResponse({ error: "Error creando registro de compra" }, 500);
     }
 
-    // For now, auto-complete the payment (manual mode)
-    // In production, integrate with Stripe/MercadoPago here
-    await adminClient
-      .from("purchases")
-      .update({ payment_status: "completed" })
-      .eq("id", purchase.id);
+    // 2. Build MP preference
+    const isSandbox = MP_TOKEN.startsWith("TEST-");
+    const baseReturn = returnUrl || `${new URL(req.url).origin.replace("/functions/v1/create-payment", "")}/billing`;
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/payment-webhook`;
 
-    // Add credits
-    const { data: profile } = await adminClient
-      .from("profiles")
-      .select("credits")
-      .eq("id", user.id)
-      .single();
+    const preference = {
+      items: [
+        {
+          id: packageId,
+          title: `Nexa One — ${packageName || packageId}`,
+          description: `${credits} créditos para Nexa One Builder`,
+          quantity: 1,
+          currency_id: "MXN",
+          unit_price: Number(amountMxn),
+        },
+      ],
+      payer: { email: user.email },
+      external_reference: purchase.id,
+      notification_url: webhookUrl,
+      back_urls: {
+        success: `${baseReturn}?status=success&purchase=${purchase.id}`,
+        failure: `${baseReturn}?status=failure&purchase=${purchase.id}`,
+        pending: `${baseReturn}?status=pending&purchase=${purchase.id}`,
+      },
+      auto_return: "approved",
+      metadata: {
+        user_id: user.id,
+        purchase_id: purchase.id,
+        credits,
+      },
+    };
 
-    await adminClient
-      .from("profiles")
-      .update({ credits: (profile?.credits || 0) + credits })
-      .eq("id", user.id);
-
-    // Record transaction
-    await adminClient.from("credit_transactions").insert({
-      user_id: user.id,
-      type: "credit",
-      amount: credits,
-      reason: `Compra: ${packageName || packageId}`,
+    const mpResponse = await fetch("https://api.mercadopago.com/checkout/preferences", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${MP_TOKEN}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(preference),
     });
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-        purchaseId: purchase.id,
-        creditsAdded: credits,
-        newBalance: (profile?.credits || 0) + credits,
-      }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    if (!mpResponse.ok) {
+      const errText = await mpResponse.text();
+      console.error("MP preference error:", mpResponse.status, errText);
+      await admin.from("purchases").update({ payment_status: "failed" }).eq("id", purchase.id);
+      return jsonResponse({ error: "Error creando preferencia de pago" }, 502);
+    }
+
+    const mpData = await mpResponse.json();
+
+    // 3. Save MP preference id as external_payment_id
+    await admin
+      .from("purchases")
+      .update({ external_payment_id: mpData.id })
+      .eq("id", purchase.id);
+
+    return jsonResponse({
+      success: true,
+      purchaseId: purchase.id,
+      preferenceId: mpData.id,
+      checkoutUrl: isSandbox ? mpData.sandbox_init_point : mpData.init_point,
+      sandbox: isSandbox,
+    });
   } catch (error) {
     console.error("create-payment error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return jsonResponse({ error: error instanceof Error ? error.message : "Error desconocido" }, 500);
   }
 });

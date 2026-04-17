@@ -15,6 +15,7 @@ export function useAuth() {
     loading: store.loading,
     initialized: store.initialized,
     signOut: store.signOut,
+    refreshProfile: store.refreshProfile,
     isAdmin: store.profile?.role === 'admin',
     isAuthenticated: !!store.session,
   };

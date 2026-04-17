@@ -8,6 +8,7 @@ interface AuthActions {
   setProfile: (profile: Profile | null) => void;
   initialize: () => Promise<void>;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
@@ -53,5 +54,15 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   signOut: async () => {
     await authService.signOut();
     set({ user: null, session: null, profile: null });
+  },
+
+  refreshProfile: async () => {
+    const userId = get().user?.id;
+    if (!userId) return;
+    const [profile, role] = await Promise.all([
+      authService.getProfile(userId),
+      authService.getUserRole(userId),
+    ]);
+    if (profile) set({ profile: { ...profile, role } });
   },
 }));

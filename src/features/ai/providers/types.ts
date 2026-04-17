@@ -1,21 +1,30 @@
 import type { AIStructuredResponse } from '../aiTypes';
+import type { GeneratedFile } from '../../projects/projectTypes';
 
-/**
- * Provider adapter interface — every AI provider implements this.
- * Decoupled from any specific gateway so we can swap providers.
- */
-export interface AIProviderAdapter {
-  readonly name: string;
-  generate(prompt: string, context?: string): Promise<AIStructuredResponse>;
-  edit(prompt: string, currentFiles: string, context?: string): Promise<AIStructuredResponse>;
+export type Tier = 'simple_task' | 'simple_edit' | 'medium_module' | 'complex_module' | 'full_app';
+
+export interface GenerateOptions {
+  projectId?: string;
+  userTier?: Tier;
 }
 
 /**
- * Provider configuration for the router
+ * Provider adapter interface — every AI provider implements this.
  */
+export interface AIProviderAdapter {
+  readonly name: string;
+  generate(prompt: string, model?: string, opts?: GenerateOptions): Promise<AIStructuredResponse>;
+  edit(
+    prompt: string,
+    currentFiles: string | GeneratedFile[],
+    model?: string,
+    opts?: GenerateOptions,
+  ): Promise<AIStructuredResponse>;
+}
+
 export interface ProviderConfig {
   id: string;
   adapter: AIProviderAdapter;
-  priority: number; // lower = higher priority for fallback
+  priority: number;
   enabled: boolean;
 }
