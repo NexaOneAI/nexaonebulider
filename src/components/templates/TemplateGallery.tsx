@@ -80,36 +80,58 @@ export function TemplateGallery({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-2">
+        <div className="grid max-h-[70vh] gap-4 overflow-y-auto pr-1 sm:grid-cols-2">
           {TEMPLATES.map((t) => (
             <button
               key={t.id}
               onClick={() => handleSelect(t)}
               disabled={creating !== null}
-              className="group relative flex flex-col gap-3 rounded-xl border border-border/50 bg-card p-5 text-left transition-all hover:border-primary/40 hover:shadow-elevated disabled:cursor-not-allowed disabled:opacity-60"
+              className="group relative flex flex-col overflow-hidden rounded-xl border border-border/50 bg-card text-left transition-all hover:border-primary/40 hover:shadow-elevated disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <div className="flex items-start gap-3">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-primary text-2xl">
+              {/* Live thumbnail: render the template's preview HTML scaled down */}
+              <div className="relative aspect-[16/10] w-full overflow-hidden border-b border-border/50 bg-slate-950">
+                <div
+                  className="pointer-events-none absolute left-0 top-0 origin-top-left"
+                  style={{
+                    width: '1280px',
+                    height: '800px',
+                    transform: 'scale(0.32)',
+                  }}
+                >
+                  <iframe
+                    title={`Preview ${t.name}`}
+                    srcDoc={t.previewCode}
+                    sandbox=""
+                    className="h-full w-full border-0"
+                    loading="lazy"
+                  />
+                </div>
+                {/* Click shield over the iframe so the button receives the click */}
+                <div className="absolute inset-0" />
+                <span className="absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg bg-background/80 text-lg backdrop-blur">
                   {t.emoji}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold">{t.name}</h3>
-                  <p className="mt-1 text-sm text-muted-foreground">{t.description}</p>
-                </div>
+                </span>
               </div>
-              <div className="flex flex-wrap gap-1.5">
-                {t.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-1 flex items-center justify-end text-sm text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                {creating === t.id ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <>Usar plantilla <ArrowRight className="ml-1 h-4 w-4" /></>
-                )}
+
+              <div className="flex flex-1 flex-col gap-2 p-4">
+                <h3 className="font-semibold">{t.name}</h3>
+                <p className="text-sm text-muted-foreground line-clamp-2">{t.description}</p>
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {t.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center justify-end text-sm text-primary">
+                  {creating === t.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <span className="opacity-0 transition-opacity group-hover:opacity-100">
+                      Usar plantilla <ArrowRight className="ml-1 inline h-4 w-4" />
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
           ))}
