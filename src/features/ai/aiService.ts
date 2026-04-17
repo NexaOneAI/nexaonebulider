@@ -1,22 +1,26 @@
 import { getProvider } from './aiRouter';
 import type { AIStructuredResponse } from './aiTypes';
+import type { GenerateOptions } from './providers/types';
+import type { GeneratedFile } from '../projects/projectTypes';
 import { DEFAULT_MODEL } from '@/lib/constants';
 
 export const aiService = {
-  /**
-   * Generate a new app from a prompt.
-   * Routes through the provider architecture (currently Lovable Gateway).
-   */
-  async generateApp(prompt: string, model: string): Promise<AIStructuredResponse> {
+  async generateApp(
+    prompt: string,
+    model: string,
+    opts: GenerateOptions = {},
+  ): Promise<AIStructuredResponse> {
     const provider = getProvider(model || DEFAULT_MODEL);
-    return provider.generate(prompt, model || DEFAULT_MODEL);
+    return provider.generate(prompt, model || DEFAULT_MODEL, opts);
   },
 
-  /**
-   * Edit an existing app incrementally.
-   */
-  async editApp(prompt: string, model: string, currentFiles: string): Promise<AIStructuredResponse> {
+  async editApp(
+    prompt: string,
+    model: string,
+    currentFiles: GeneratedFile[] | string,
+    opts: GenerateOptions = {},
+  ): Promise<AIStructuredResponse> {
     const provider = getProvider(model || DEFAULT_MODEL);
-    return provider.edit(prompt, currentFiles, model || DEFAULT_MODEL);
+    return provider.edit(prompt, currentFiles, model || DEFAULT_MODEL, opts);
   },
 };

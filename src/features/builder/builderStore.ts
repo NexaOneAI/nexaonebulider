@@ -4,6 +4,7 @@ import { generatePreviewHtml } from './preview';
 import type { BuilderState } from './builderTypes';
 import type { GeneratedFile } from '../projects/projectTypes';
 import type { AIMessage } from '../ai/aiTypes';
+import type { Tier } from '../ai/providers/types';
 import { generateId } from '@/lib/utils';
 import { DEFAULT_MODEL } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,12 +12,13 @@ import { supabase } from '@/integrations/supabase/client';
 interface BuilderActions {
   setProjectName: (name: string) => void;
   setModel: (model: string) => void;
+  setTier: (tier: Tier | null) => void;
   setViewMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
   setSelectedFile: (file: GeneratedFile | null) => void;
   setShowCode: (show: boolean) => void;
   toggleSidebar: () => void;
   toggleChat: () => void;
-  sendPrompt: (prompt: string) => Promise<void>;
+  sendPrompt: (prompt: string, tierOverride?: Tier) => Promise<void>;
   loadVersion: (versionId: string) => Promise<void>;
   reset: (projectId: string) => void;
 }
@@ -25,6 +27,8 @@ interface ExtendedBuilderState extends BuilderState {
   showCode: boolean;
   creditsUsed: number;
   creditsRemaining: number;
+  tier: Tier | null; // optional user override
+  lastTier: string | null; // last tier actually charged
 }
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
@@ -42,6 +46,8 @@ const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   showCode: false,
   creditsUsed: 0,
   creditsRemaining: -1,
+  tier: null,
+  lastTier: null,
 };
 
 export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((set, get) => ({
@@ -50,6 +56,7 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
 
   setProjectName: (name) => set({ projectName: name }),
   setModel: (model) => set({ model }),
+  setTier: (tier) => set({ tier }),
   setViewMode: (mode) => set({ viewMode: mode }),
   setSelectedFile: (file) => set({ selectedFile: file }),
   setShowCode: (show) => set({ showCode: show }),
@@ -78,8 +85,9 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
     });
   },
 
-  sendPrompt: async (prompt) => {
-    const { model, projectId, files, messages, mode } = get();
+  sendPrompt: async (prompt, tierOverride) => {
+    const { model, projectId, files, messages, mode, tier } = get();
+    const userTier = tierOverride || tier || undefined;
 
     const userMsg: AIMessage = {
       id: generateId(),
@@ -93,26 +101,29 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
     set({ messages: [...messages, userMsg], loading: true });
 
     try {
-      // Call AI service — edge function handles credits, versioning, etc.
-      const response = mode === 'create' && files.length === 0
-        ? await aiService.generateApp(prompt, model)
-        : await aiService.editApp(prompt, model, JSON.stringify(files));
+      const isFirstGeneration = mode === 'create' && files.length === 0;
+      const response = isFirstGeneration
+        ? await aiService.generateApp(prompt, model, { projectId, userTier })
+        : await aiService.editApp(prompt, model, files, { projectId, userTier });
 
       const newFiles = response.files;
       const previewCode = generatePreviewHtml(
         newFiles,
         response.projectName || get().projectName,
-        model
+        model,
       );
 
-      // Extract meta if available
       const meta = (response as any)?._meta;
+      const summary = (response as any)?.summary;
+      const changedCount = (response as any)?.changed_files?.length;
 
       const aiMsg: AIMessage = {
         id: generateId(),
         project_id: projectId,
         role: 'assistant',
-        content: `✅ ${mode === 'create' ? 'App generada' : 'App actualizada'} con ${newFiles.length} archivos usando ${model}.${meta?.credits_used ? ` (${meta.credits_used} créditos)` : ''} Puedes seguir editando por chat.`,
+        content: isFirstGeneration
+          ? `✅ App generada con ${newFiles.length} archivos (${meta?.credits_used || 0} créditos · ${meta?.tier || '?'}).`
+          : `✏️ ${summary || 'App actualizada'} — ${changedCount || 0} archivos modificados (${meta?.credits_used || 0} créditos · ${meta?.tier || '?'}).`,
         model,
         created_at: new Date().toISOString(),
       };
@@ -120,7 +131,7 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
       set({
         files: newFiles,
         previewCode,
-        selectedFile: null, // Show preview by default
+        selectedFile: null,
         showCode: false,
         messages: [...get().messages, aiMsg],
         loading: false,
@@ -128,6 +139,8 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
         projectName: response.projectName || get().projectName,
         creditsUsed: meta?.credits_used || 0,
         creditsRemaining: meta?.credits_remaining ?? -1,
+        lastTier: meta?.tier || null,
+        tier: null, // reset override after use
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
