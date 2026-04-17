@@ -54,9 +54,9 @@ export function PreviewPanel() {
       )}
 
       {hasContent ? (
-        <div className="flex flex-1 items-start justify-center overflow-auto p-4">
+        <div className="flex min-h-0 flex-1 justify-center overflow-auto p-4">
           <div
-            className="h-full w-full overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated transition-all"
+            className="flex h-full min-h-[600px] w-full flex-col overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated transition-all"
             style={{ maxWidth: VIEW_WIDTHS[viewMode] }}
           >
             {showingCode && selectedFile ? (
@@ -64,10 +64,10 @@ export function PreviewPanel() {
             ) : previewCode ? (
               <iframe
                 srcDoc={previewCode}
-                className="h-full w-full min-h-[600px]"
+                className="h-full w-full flex-1"
                 sandbox="allow-scripts allow-same-origin"
                 title="Live Preview"
-                style={{ border: 'none', background: 'white' }}
+                style={{ border: 'none', background: 'white', display: 'block' }}
               />
             ) : null}
           </div>
