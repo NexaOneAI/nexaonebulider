@@ -23,10 +23,16 @@ export function ProjectHeader() {
     ? creditsRemaining
     : profile?.credits ?? '--';
 
+  const projectId = useBuilderStore((s) => s.projectId);
   const handleExport = async () => {
     if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
-    await exportProjectZip(projectName, files);
-    toast.success('Proyecto exportado como ZIP');
+    const tid = toast.loading('Generando ZIP en el servidor...');
+    try {
+      await exportProjectZip(projectName, files, projectId);
+      toast.success('ZIP descargado', { id: tid });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Error al exportar', { id: tid });
+    }
   };
 
   const handleSave = () => {
