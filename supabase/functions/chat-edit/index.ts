@@ -9,7 +9,7 @@ import {
   recordDebit,
   type Tier,
 } from "../_shared/credits.ts";
-import { parseAIResponse } from "../_shared/parser.ts";
+import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
 
@@ -18,49 +18,74 @@ You receive:
 2. The recent conversation history
 3. A new edit request
 
-Use the edit_app tool to return ONLY the files that change. For each change, set:
-- action: "modify" (file exists, replace content), "create" (new file), or "delete" (remove file)
-- path: file path
-- content: full new content (for modify/create), empty for delete
-- language: file language
+You MUST respond using the apply_edits tool. The tool returns a single string field "edits" formatted as Aider-style SEARCH/REPLACE blocks per file.
+
+FORMAT — strictly follow it:
+
+### path/to/file.tsx
+ACTION: modify
+LANG: tsx
+<<<<<<< SEARCH
+exact existing lines to find (must match the file byte-for-byte)
+=======
+new lines that replace them
+>>>>>>> REPLACE
 
 Rules:
-- Be surgical — return ONLY changed files, NOT the entire codebase
-- Preserve existing code style and patterns
-- Reference conversation history for context (e.g., "make it blue" refers to a previously discussed element)
-- Update projectName and description only if the change warrants it`;
+- Use ACTION: modify | create | delete.
+- For "create" you can omit SEARCH and put the full new content between markers (use one block with empty SEARCH).
+- For "delete" do not include any SEARCH/REPLACE block.
+- The SEARCH section MUST be copied exactly from the current file (same indentation, same whitespace). Keep it as small as possible but unique enough to match only one place.
+- Output multiple blocks per file if you need several edits.
+- DO NOT return full file contents when modifying. Only the SEARCH/REPLACE pairs.
+- DO NOT wrap the output in markdown fences.
+- Also return a one-sentence "summary" of what changed and (optionally) updated projectName / description.`;
 
 const TOOL_SCHEMA = {
   type: "function" as const,
   function: {
-    name: "edit_app",
-    description: "Apply incremental edits to an existing React app",
+    name: "apply_edits",
+    description:
+      "Return SEARCH/REPLACE blocks per changed file (Aider-style). Do NOT return full file contents.",
     parameters: {
       type: "object",
       properties: {
         summary: { type: "string", description: "One-sentence summary of what changed" },
         projectName: { type: "string" },
         description: { type: "string" },
-        changed_files: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              path: { type: "string" },
-              content: { type: "string" },
-              language: { type: "string" },
-              action: { type: "string", enum: ["modify", "create", "delete"] },
-            },
-            required: ["path", "action", "language", "content"],
-            additionalProperties: false,
-          },
+        edits: {
+          type: "string",
+          description:
+            "Plain text containing one or more file sections in the format: '### path' + 'ACTION: ...' + 'LANG: ...' + SEARCH/REPLACE blocks.",
         },
       },
-      required: ["summary", "changed_files"],
+      required: ["summary", "edits"],
       additionalProperties: false,
     },
   },
 };
+
+function parseToolCall(data: any): {
+  summary?: string;
+  projectName?: string;
+  description?: string;
+  edits?: string;
+} | null {
+  const toolCall = data?.choices?.[0]?.message?.tool_calls?.[0];
+  if (toolCall?.function?.arguments) {
+    try {
+      return JSON.parse(toolCall.function.arguments);
+    } catch {
+      // fallthrough
+    }
+  }
+  // Fallback: model returned plain text → treat full content as `edits`.
+  const content = data?.choices?.[0]?.message?.content;
+  if (typeof content === "string" && content.includes("<<<<<<< SEARCH")) {
+    return { summary: "Edición aplicada", edits: content };
+  }
+  return null;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -71,7 +96,8 @@ serve(async (req) => {
   try {
     const { prompt, model, projectId, currentFiles, userTier } = await req.json();
 
-    if (!prompt || typeof prompt !== "string") return jsonResponse({ error: "El prompt es requerido" }, 400);
+    if (!prompt || typeof prompt !== "string")
+      return jsonResponse({ error: "El prompt es requerido" }, 400);
     if (!Array.isArray(currentFiles) || currentFiles.length === 0) {
       return jsonResponse({ error: "currentFiles es requerido" }, 400);
     }
@@ -100,7 +126,7 @@ serve(async (req) => {
     const aiModel = model || "google/gemini-3-flash-preview";
 
     try {
-      // Load last 6 messages for context
+      // Recent conversation context.
       let history: Array<{ role: string; content: string }> = [];
       if (projectId) {
         const { data: msgs } = await admin
@@ -115,7 +141,6 @@ serve(async (req) => {
         }));
       }
 
-      // Compact file representation
       const filesContext = currentFiles
         .map((f: any) => `### ${f.path}\n\`\`\`${f.language}\n${f.content}\n\`\`\``)
         .join("\n\n");
@@ -124,7 +149,7 @@ serve(async (req) => {
         { role: "system", content: SYSTEM_PROMPT },
         {
           role: "user",
-          content: `Current app files:\n\n${filesContext}\n\nReturn ONLY the files that need to change.`,
+          content: `Current app files:\n\n${filesContext}\n\nReturn ONLY SEARCH/REPLACE blocks for what changes.`,
         },
         ...history,
         { role: "user", content: prompt },
@@ -140,7 +165,7 @@ serve(async (req) => {
           model: aiModel,
           messages,
           tools: [TOOL_SCHEMA],
-          tool_choice: { type: "function", function: { name: "edit_app" } },
+          tool_choice: { type: "function", function: { name: "apply_edits" } },
         }),
       });
 
@@ -156,35 +181,49 @@ serve(async (req) => {
       }
 
       const data = await response.json();
-      const result = parseAIResponse(data);
+      const result = parseToolCall(data);
 
-      if (!result || !Array.isArray(result.changed_files)) {
+      if (!result || !result.edits) {
         if (!creditCheck.isUnlimited) {
           await refundCredits(admin, user.id, cost, "Respuesta inválida", aiModel, projectId);
         }
         return jsonResponse({ error: "No se pudo parsear la respuesta de la IA" }, 502);
       }
 
-      // Apply diff: merge changed_files into currentFiles
-      const fileMap = new Map<string, any>();
-      currentFiles.forEach((f: any) => fileMap.set(f.path, f));
-
-      for (const change of result.changed_files) {
-        if (change.action === "delete") {
-          fileMap.delete(change.path);
-        } else {
-          fileMap.set(change.path, {
-            path: change.path,
-            content: change.content,
-            language: change.language || "text",
-          });
+      const fileEdits = parseSearchReplaceText(result.edits);
+      if (fileEdits.length === 0) {
+        if (!creditCheck.isUnlimited) {
+          await refundCredits(admin, user.id, cost, "Sin bloques SEARCH/REPLACE", aiModel, projectId);
         }
+        return jsonResponse(
+          { error: "La IA no devolvió bloques SEARCH/REPLACE válidos", raw: result.edits.slice(0, 500) },
+          502,
+        );
       }
 
-      const mergedFiles = Array.from(fileMap.values());
-      const projectName = result.projectName || currentFiles[0]?.projectName || "Mi proyecto";
+      const applyResult = applyEdits(
+        currentFiles.map((f: any) => ({ path: f.path, content: f.content, language: f.language })),
+        fileEdits,
+      );
 
-      await recordDebit(admin, user.id, cost, "Edición de app con IA", aiModel, projectId, tier);
+      if (applyResult.applied === 0) {
+        if (!creditCheck.isUnlimited) {
+          await refundCredits(admin, user.id, cost, "Ningún bloque aplicó", aiModel, projectId);
+        }
+        return jsonResponse(
+          {
+            error: "Ningún bloque SEARCH coincidió con los archivos. La IA debe reintentar.",
+            failed: applyResult.failed,
+          },
+          502,
+        );
+      }
+
+      const mergedFiles = applyResult.files;
+      const projectName = result.projectName || currentFiles[0]?.projectName || "Mi proyecto";
+      const changedPaths = Array.from(new Set(fileEdits.map((e) => e.path)));
+
+      await recordDebit(admin, user.id, cost, "Edición de app con IA (diffs)", aiModel, projectId, tier);
 
       if (projectId) {
         const { data: versions } = await admin
@@ -202,7 +241,18 @@ serve(async (req) => {
           prompt,
           model_used: aiModel,
           generated_files: mergedFiles,
-          output_json: { ...result, files: mergedFiles, projectName },
+          output_json: {
+            summary: result.summary,
+            description: result.description,
+            projectName,
+            edits_meta: {
+              applied: applyResult.applied,
+              failed: applyResult.failed,
+              changed_paths: changedPaths,
+              bytes_saved: applyResult.bytesSaved,
+            },
+            files: mergedFiles,
+          },
         });
 
         await admin.from("ai_messages").insert([
@@ -211,7 +261,9 @@ serve(async (req) => {
             project_id: projectId,
             user_id: user.id,
             role: "assistant",
-            content: `${result.summary || "App actualizada"} (${result.changed_files.length} archivos · ${cost} créditos · ${tier})`,
+            content: `${result.summary || "App actualizada"} · ${applyResult.applied} bloques aplicados en ${changedPaths.length} archivos · ${cost} créditos · ${tier}${
+              applyResult.failed.length ? ` · ⚠️ ${applyResult.failed.length} bloques fallaron` : ""
+            }`,
             model: aiModel,
           },
         ]);
@@ -221,7 +273,7 @@ serve(async (req) => {
         projectName,
         description: result.description || "",
         files: mergedFiles,
-        changed_files: result.changed_files,
+        changed_paths: changedPaths,
         summary: result.summary,
         dependencies: {},
         pages: [],
@@ -232,7 +284,11 @@ serve(async (req) => {
           model: aiModel,
           tier,
           mode: "edit",
-          changed_count: result.changed_files.length,
+          strategy: "search_replace",
+          blocks_applied: applyResult.applied,
+          blocks_failed: applyResult.failed,
+          bytes_saved: applyResult.bytesSaved,
+          changed_count: changedPaths.length,
         },
       });
     } catch (aiError) {

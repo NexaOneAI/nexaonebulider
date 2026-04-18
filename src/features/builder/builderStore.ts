@@ -234,7 +234,28 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
 
       const meta = (response as any)?._meta;
       const summary = (response as any)?.summary;
-      const changedCount = (response as any)?.changed_files?.length;
+      const changedCount =
+        (response as any)?.changed_paths?.length ??
+        (response as any)?.changed_files?.length ??
+        0;
+
+      const editFooter = () => {
+        const parts: string[] = [];
+        if (meta?.blocks_applied != null) {
+          parts.push(`${meta.blocks_applied} bloques en ${changedCount} archivos`);
+        } else {
+          parts.push(`${changedCount} archivos modificados`);
+        }
+        parts.push(`${meta?.credits_used || 0} créditos · ${meta?.tier || '?'}`);
+        if (typeof meta?.bytes_saved === 'number' && meta.bytes_saved > 0) {
+          const kb = (meta.bytes_saved / 1024).toFixed(1);
+          parts.push(`💾 ~${kb} KB ahorrados (diffs)`);
+        }
+        if (Array.isArray(meta?.blocks_failed) && meta.blocks_failed.length > 0) {
+          parts.push(`⚠️ ${meta.blocks_failed.length} bloques fallaron`);
+        }
+        return parts.join(' · ');
+      };
 
       set((s) => ({
         files: newFiles,
@@ -247,7 +268,7 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
                 ...m,
                 content: isFirstGeneration
                   ? `✅ App generada con ${newFiles.length} archivos (${meta?.credits_used || 0} créditos · ${meta?.tier || '?'}).`
-                  : `✏️ ${summary || 'App actualizada'} — ${changedCount || 0} archivos modificados (${meta?.credits_used || 0} créditos · ${meta?.tier || '?'}).`,
+                  : `✏️ ${summary || 'App actualizada'} — ${editFooter()}.`,
               }
             : m,
         ),
