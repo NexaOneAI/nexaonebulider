@@ -2,42 +2,57 @@ import type { GeneratedFile } from '../projects/projectTypes';
 
 /**
  * Generate a REAL live preview HTML that renders the React app
- * inside an iframe using UMD React + Babel standalone
+ * inside an iframe. We let Babel Standalone (with the TS preset plugin)
+ * compile TSX/JSX in the browser. We only strip imports/exports and
+ * rewrite hook references — no manual TS-stripping (that was fragile).
  */
 export function generatePreviewHtml(
   files: GeneratedFile[],
   projectName: string,
-  _model: string
+  _model: string,
 ): string {
   const appFile = files.find(
-    (f) => f.path === 'src/App.tsx' || f.path === 'src/App.jsx' || f.path === 'App.tsx' || f.path === 'App.jsx'
-  );
-
-  if (!appFile) {
-    return generateFallbackPreview(files, projectName);
-  }
-
-  // Collect all component files (non-App, non-main)
-  const componentFiles = files.filter(
     (f) =>
-      (f.path.endsWith('.tsx') || f.path.endsWith('.jsx')) &&
-      !f.path.includes('main.') &&
-      f.path !== appFile.path
+      f.path === 'src/App.tsx' ||
+      f.path === 'src/App.jsx' ||
+      f.path === 'App.tsx' ||
+      f.path === 'App.jsx',
   );
 
-  // Find CSS files
+  if (!appFile) return generateFallbackPreview(files, projectName);
+
+  // Component files — order: types first, then components, App last
+  const otherFiles = files.filter(
+    (f) =>
+      (f.path.endsWith('.tsx') ||
+        f.path.endsWith('.jsx') ||
+        f.path.endsWith('.ts') ||
+        f.path.endsWith('.js')) &&
+      !f.path.includes('main.') &&
+      !f.path.endsWith('.d.ts') &&
+      f.path !== appFile.path,
+  );
+
+  // Sort: .ts/.js (types/utils) first, then .tsx/.jsx (components)
+  otherFiles.sort((a, b) => {
+    const aIsType = a.path.endsWith('.ts') || a.path.endsWith('.js');
+    const bIsType = b.path.endsWith('.ts') || b.path.endsWith('.js');
+    if (aIsType && !bIsType) return -1;
+    if (!aIsType && bIsType) return 1;
+    return 0;
+  });
+
   const cssContent = files
     .filter((f) => f.path.endsWith('.css'))
     .map((f) => f.content)
     .join('\n');
 
-  // Build component scripts
-  const componentScripts = componentFiles
+  const componentScripts = otherFiles
     .map(
       (f) =>
-        `<script type="text/babel" data-presets="react,typescript">
-${transformForPreview(f.content)}
-<\/script>`
+        `<script type="text/babel" data-type="module" data-presets="typescript,react">
+${stripImportsExports(f.content)}
+<\/script>`,
     )
     .join('\n');
 
@@ -51,10 +66,7 @@ ${transformForPreview(f.content)}
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      min-height: 100vh;
-    }
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; min-height: 100vh; }
     ${cssContent}
   </style>
 </head>
@@ -63,18 +75,43 @@ ${transformForPreview(f.content)}
   <script src="https://unpkg.com/react@18/umd/react.development.js"><\/script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"><\/script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+  <script>
+    // Expose React hooks/types at global scope so transformed code (which
+    // had its imports stripped) can still reference them as bare identifiers.
+    (function () {
+      var R = window.React;
+      ['useState','useEffect','useCallback','useMemo','useRef','useContext',
+       'useReducer','useLayoutEffect','Fragment','createContext','forwardRef',
+       'memo','Suspense','lazy','Children','cloneElement','isValidElement']
+        .forEach(function (k) { window[k] = R[k]; });
+      window.ReactDOM = window.ReactDOM;
+    })();
+
+    // Catch errors and render them nicely
+    window.addEventListener('error', function (e) {
+      var root = document.getElementById('root');
+      if (root && !root.hasChildNodes()) {
+        root.innerHTML =
+          '<div style="padding:2rem;font-family:ui-monospace,monospace;color:#ef4444;background:#0f172a;min-height:100vh">' +
+          '<h2 style="color:#f97316;margin-bottom:1rem;font-family:Inter,sans-serif">⚠️ Preview Error</h2>' +
+          '<pre style="white-space:pre-wrap;font-size:13px;color:#fca5a5">' +
+          (e.message || 'Unknown error') + '</pre></div>';
+      }
+    });
+  <\/script>
   ${componentScripts}
-  <script type="text/babel" data-presets="react,typescript">
-    ${transformForPreview(appFile.content)}
+  <script type="text/babel" data-type="module" data-presets="typescript,react">
+${stripImportsExports(appFile.content)}
 
     try {
-      const root = ReactDOM.createRoot(document.getElementById('root'));
+      var rootEl = document.getElementById('root');
+      var root = ReactDOM.createRoot(rootEl);
       root.render(React.createElement(App));
     } catch (e) {
-      document.getElementById('root').innerHTML = 
-        '<div style="padding:2rem;font-family:monospace;color:#ef4444;background:#1e1e1e;min-height:100vh">' +
-        '<h2 style="color:#f97316;margin-bottom:1rem">⚠️ Preview Error</h2>' +
-        '<pre style="white-space:pre-wrap;font-size:13px">' + e.message + '</pre></div>';
+      document.getElementById('root').innerHTML =
+        '<div style="padding:2rem;font-family:ui-monospace,monospace;color:#ef4444;background:#0f172a;min-height:100vh">' +
+        '<h2 style="color:#f97316;margin-bottom:1rem;font-family:Inter,sans-serif">⚠️ Preview Error</h2>' +
+        '<pre style="white-space:pre-wrap;font-size:13px;color:#fca5a5">' + (e.message || e) + '</pre></div>';
     }
   <\/script>
 </body>
@@ -82,57 +119,30 @@ ${transformForPreview(f.content)}
 }
 
 /**
- * Transform TSX/JSX content for browser preview:
- * - Remove import statements (we use UMD globals)
- * - Remove export statements
- * - Replace hooks references
- * - Strip TypeScript annotations more aggressively
+ * Strip ES module syntax (Babel's TS preset can't resolve module imports
+ * in browser). We KEEP the rest of the code intact so Babel can handle
+ * all TypeScript/JSX faithfully.
+ *
+ * Special-case: `import X from 'react'` and named imports from 'react'
+ * are unnecessary because we exposed React + hooks as globals.
  */
-function transformForPreview(content: string): string {
-  let code = content;
+function stripImportsExports(src: string): string {
+  let code = src;
 
-  // Remove import lines (multiline too)
-  code = code.replace(/^import\s+[\s\S]*?from\s+['"][^'"]*['"];?\s*$/gm, '');
-  code = code.replace(/^import\s+['"][^'"]*['"];?\s*$/gm, '');
+  // Drop ALL import statements (we expose React as a global)
+  code = code.replace(/^\s*import\s+[\s\S]*?from\s+['"][^'"]+['"];?\s*$/gm, '');
+  code = code.replace(/^\s*import\s+['"][^'"]+['"];?\s*$/gm, '');
 
-  // Remove TypeScript interfaces and type aliases BEFORE other transforms
-  code = code.replace(/^(?:export\s+)?interface\s+\w+\s*(?:extends\s+[^{]*)?\{[^}]*\}/gm, '');
-  code = code.replace(/^(?:export\s+)?type\s+\w+\s*=\s*(?:\{[^}]*\}|[^;]+);/gm, '');
-
-  // Replace "export default function" with "function"
-  code = code.replace(/export\s+default\s+function\s+/g, 'function ');
-  // Replace "export default" at the end
-  code = code.replace(/export\s+default\s+(\w+);?\s*$/gm, '');
-  // Replace "export function"
-  code = code.replace(/export\s+function\s+/g, 'function ');
-  // Replace "export const"
-  code = code.replace(/export\s+const\s+/g, 'const ');
-
-  // Use React globals for hooks
-  code = code.replace(
-    /\b(useState|useEffect|useCallback|useMemo|useRef|useContext|useReducer|Fragment)\b/g,
-    'React.$1'
-  );
-
-  // Remove TypeScript type annotations
-  // Function parameter types: (x: string, y: number)
-  code = code.replace(/(\w+)\s*:\s*(?:string|number|boolean|any|void|null|undefined|object|never|unknown)(?:\[\])?\s*(?=[,)\]=])/g, '$1');
-  // Return type annotations
-  code = code.replace(/\)\s*:\s*(?:React\.)?(?:JSX\.Element|FC|ReactNode|ReactElement|string|number|boolean|void|any|null|undefined)(?:\s*\|[^{=]*?)?(?=\s*[{=])/g, ')');
-  // Generic type parameters on functions
-  code = code.replace(/<(?:string|number|boolean|any|void|null|undefined|[A-Z]\w*(?:Props|Type|State|Config|Options)?)(?:\s*,\s*(?:string|number|boolean|any|[A-Z]\w*))*>/g, '');
-  // Type assertions: as SomeType
-  code = code.replace(/\s+as\s+\w+(?:\[\])?/g, '');
-  // React.FC<Props> type annotation
-  code = code.replace(/:\s*React\.FC(?:<[^>]*>)?/g, '');
-  // Standalone React.FC<Props> = 
-  code = code.replace(/React\.FC(?:<[^>]*>)?\s*=\s*/g, '');
-
-  // Remove `satisfies` operator  
-  code = code.replace(/\s+satisfies\s+\w+(?:<[^>]*>)?/g, '');
-
-  // Remove blank lines clusters
-  code = code.replace(/\n{3,}/g, '\n\n');
+  // Replace `export default function Foo` with `function Foo`
+  code = code.replace(/^\s*export\s+default\s+function\s+/gm, 'function ');
+  // Replace `export default X;` (assignment-like) with nothing
+  code = code.replace(/^\s*export\s+default\s+\w+\s*;?\s*$/gm, '');
+  // Replace `export default <expr>` with `var __default = <expr>`
+  code = code.replace(/^\s*export\s+default\s+/gm, 'var __default = ');
+  // Strip `export ` keyword from declarations (keep the declaration)
+  code = code.replace(/^\s*export\s+(const|let|var|function|class|interface|type|enum)\s+/gm, '$1 ');
+  // Strip leftover `export { ... };`
+  code = code.replace(/^\s*export\s*\{[^}]*\}\s*;?\s*$/gm, '');
 
   return code;
 }
@@ -160,7 +170,7 @@ function generateFallbackPreview(files: GeneratedFile[], projectName: string): s
       </svg>
     </div>
     <h1 class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-violet-400 bg-clip-text text-transparent mb-2">${escapeHtml(projectName)}</h1>
-    <p class="text-gray-400 mb-6">${files.length} archivos generados</p>
+    <p class="text-gray-400 mb-6">${files.length} archivos generados (no se encontró App.tsx)</p>
     <ul class="text-left text-sm text-gray-500 space-y-1 bg-gray-900 rounded-lg p-4 font-mono">${fileList}</ul>
   </div>
 </body>
