@@ -1,5 +1,11 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { GenerateAppInput, GenerateAppResult, AiActionKey } from "./aiTypes";
+import type {
+  GenerateAppInput,
+  GenerateAppResult,
+  GenerateAppRequest,
+  BuilderOutput,
+  AiActionKey,
+} from "./aiTypes";
 
 /**
  * Calls the `estimate-cost` edge function with an explicit actionKey.
