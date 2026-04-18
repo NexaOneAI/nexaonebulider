@@ -17,6 +17,38 @@ export interface AIStructuredResponse {
   components: string[];
 }
 
+// ===== Strict client contract (used by aiClient.ts) =====
+export type AiMode = 'create' | 'edit';
+
+export type AiActionKey =
+  | 'simple_prompt'
+  | 'simple_task'
+  | 'edit_prompt'
+  | 'simple_edit'
+  | 'medium_module'
+  | 'complex_module'
+  | 'full_app';
+
+export interface GenerateAppInput {
+  projectId: string;
+  prompt: string;
+  mode: AiMode;
+  actionKey: AiActionKey;
+  provider: AIProviderId;
+  model: string;
+}
+
+export interface GenerateAppResult {
+  ok: boolean;
+  versionId?: string;
+  versionNumber?: number;
+  files?: Record<string, string>;
+  previewCode?: string;
+  dependencies?: string[];
+  creditsCharged?: number;
+  error?: string;
+}
+
 export type AIProviderId = 'openai' | 'google' | 'claude' | 'grok' | 'custom';
 
 export interface AIProviderConfig {
