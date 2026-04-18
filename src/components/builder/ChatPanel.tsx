@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2 } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 
