@@ -1,19 +1,5 @@
 import type { BuilderOutput } from "../types.ts";
 
-function cleanJsonResponse(raw: string) {
-  let text = raw.trim();
-  text = text.replace(/^```json\s*/i, "");
-  text = text.replace(/^```\s*/i, "");
-  text = text.replace(/```$/i, "");
-  text = text.trim();
-  const firstBrace = text.indexOf("{");
-  const lastBrace = text.lastIndexOf("}");
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    text = text.slice(firstBrace, lastBrace + 1);
-  }
-  return text;
-}
-
 function fallbackBuilderOutput(prompt: string): BuilderOutput {
   return {
     projectName: "Nueva App",
@@ -46,15 +32,21 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   };
 }
 
-/**
- * Calls Google Generative Language API directly.
- * Default model when none provided: gemini-1.5-flash.
- */
-export async function callGemini(prompt: string, model: string): Promise<BuilderOutput> {
-  const apiKey = Deno.env.get("GEMINI_API_KEY");
-  if (!apiKey) return fallbackBuilderOutput(prompt);
+function cleanJsonResponse(raw: string) {
+  let text = raw.trim();
+  text = text.replace(/^```json\s*/i, "");
+  text = text.replace(/^```\s*/i, "");
+  text = text.replace(/```$/i, "");
+  text = text.trim();
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    text = text.slice(firstBrace, lastBrace + 1);
+  }
+  return text;
+}
 
-  const systemPrompt = `
+const SYSTEM_INSTRUCTION = `
 Devuelve exclusivamente JSON válido.
 No uses markdown.
 No uses triple backticks.
@@ -74,21 +66,36 @@ Formato obligatorio:
 }
 `;
 
-  const modelId = model || "gemini-1.5-flash";
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+export async function callGemini(prompt: string, model: string): Promise<BuilderOutput> {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) return fallbackBuilderOutput(prompt);
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      systemInstruction: { role: "system", parts: [{ text: systemPrompt }] },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.2,
-        responseMimeType: "application/json",
+  const modelId = model || "gemini-1.5-flash";
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        // Mejora 1: separar la instrucción del sistema del prompt del usuario
+        systemInstruction: { role: "system", parts: [{ text: SYSTEM_INSTRUCTION }] },
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: prompt }],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.2,
+          // Mejora 2: forzar JSON válido sin markdown
+          responseMimeType: "application/json",
+        },
+      }),
+    },
+  );
 
   if (!response.ok) {
     return fallbackBuilderOutput(prompt);
