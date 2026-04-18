@@ -1,8 +1,8 @@
-import { callOpenAI } from "../providers/openai.ts";
-import { callGemini } from "../providers/gemini.ts";
-import { callClaude } from "../providers/claude.ts";
-import { callGrok } from "../providers/grok.ts";
-import { callLovable } from "../providers/lovable.ts";
+import { callOpenAI } from "./providers/openai.ts";
+import { callGemini } from "./providers/gemini.ts";
+import { callClaude } from "./providers/claude.ts";
+import { callGrok } from "./providers/grok.ts";
+import { callLovable } from "./providers/lovable.ts";
 import type { AiProvider, BuilderOutput } from "./types.ts";
 
 export async function callAiProvider(
