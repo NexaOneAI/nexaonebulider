@@ -50,7 +50,7 @@ export function generatePreviewHtml(
   const componentScripts = otherFiles
     .map(
       (f) =>
-        `<script type="text/babel" data-type="module" data-presets="typescript,react">
+        `<script type="text/babel" data-presets="react,typescript" data-plugins="transform-modules-umd">
 ${stripImportsExports(f.content)}
 <\/script>`,
     )
@@ -100,7 +100,7 @@ ${stripImportsExports(f.content)}
     });
   <\/script>
   ${componentScripts}
-  <script type="text/babel" data-type="module" data-presets="typescript,react">
+  <script type="text/babel" data-presets="react,typescript">
 ${stripImportsExports(appFile.content)}
 
     try {
