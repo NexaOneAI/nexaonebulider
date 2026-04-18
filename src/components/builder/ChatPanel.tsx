@@ -1,9 +1,10 @@
 import { useRef, useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2 } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 
@@ -23,12 +24,14 @@ export function ChatPanel() {
   const filesCount = useBuilderStore((s) => s.files.length);
   const previewError = useBuilderStore((s) => s.previewError);
   const fixWithAI = useBuilderStore((s) => s.fixWithAI);
+  const streaming = useBuilderStore((s) => s.streaming);
+  const streamingFiles = useBuilderStore((s) => s.streamingFiles);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingFiles.length]);
 
   const modelLabel = AI_MODEL_LABELS[model] || model;
   const isEdit = filesCount > 0;
@@ -75,30 +78,69 @@ export function ChatPanel() {
             </div>
           </div>
         )}
-        {messages.map((msg) => (
-          <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-            {msg.role === 'assistant' && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-primary">
-                <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+        {messages.map((msg, idx) => {
+          const isLastAssistant =
+            msg.role === 'assistant' && idx === messages.length - 1 && streaming;
+          const isEmpty = msg.role === 'assistant' && msg.content.length === 0;
+          return (
+            <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+              {msg.role === 'assistant' && (
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-primary">
+                  <Bot className="h-3.5 w-3.5 text-primary-foreground" />
+                </div>
+              )}
+              <div
+                className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
+                  msg.role === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-foreground'
+                }`}
+              >
+                {msg.role === 'assistant' ? (
+                  <div className="prose prose-sm prose-invert max-w-none [&>p]:my-0 [&_code]:text-xs">
+                    {isEmpty && isLastAssistant ? (
+                      <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                        <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                        Pensando...
+                      </span>
+                    ) : (
+                      <>
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        {isLastAssistant && (
+                          <span className="ml-0.5 inline-block h-3 w-1.5 animate-pulse bg-primary align-middle" />
+                        )}
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  msg.content
+                )}
               </div>
-            )}
-            <div
-              className={`max-w-[85%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
-                msg.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-foreground'
-              }`}
-            >
-              {msg.content}
+              {msg.role === 'user' && (
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary">
+                  <User className="h-3.5 w-3.5" />
+                </div>
+              )}
             </div>
-            {msg.role === 'user' && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-secondary">
-                <User className="h-3.5 w-3.5" />
+          );
+        })}
+        {streaming && streamingFiles.length > 0 && (
+          <div className="ml-9 space-y-1 rounded-lg border border-primary/20 bg-primary/5 p-2">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-primary/80">
+              Archivos detectados
+            </div>
+            {streamingFiles.map((path) => (
+              <div
+                key={path}
+                className="flex items-center gap-1.5 text-[11px] font-mono text-muted-foreground animate-in fade-in slide-in-from-left-1"
+              >
+                <FileCode className="h-3 w-3 text-primary/60" />
+                {path}
               </div>
-            )}
+            ))}
           </div>
-        ))}
-        {loading && (
+        )}
+        {loading && !streaming && (
           <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-3 py-2.5 text-sm text-muted-foreground">
             <Loader size="sm" />
             <span>Generando con {modelLabel}...</span>
