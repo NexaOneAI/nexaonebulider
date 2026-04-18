@@ -105,9 +105,11 @@ export function generatePreviewHtml(
       }
     });
   <\/script>
-  ${componentScripts}
   <script>
     try {
+${allTranspiled}
+
+// ===== App =====
 ${appJs}
 
       var rootEl = document.getElementById('root');
