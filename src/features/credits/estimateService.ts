@@ -1,3 +1,4 @@
+import { estimateCost as estimateByActionKey } from '@/features/ai/aiClient';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface CostEstimate {
@@ -8,8 +9,7 @@ export interface CostEstimate {
 }
 
 /**
- * Calls the `estimate-cost` edge function to get a heuristic credit cost
- * for a given prompt before actually invoking generate-app / chat-edit.
+ * Heuristic estimation from prompt + mode (server-side classification).
  */
 export async function estimateCost(
   prompt: string,
@@ -21,6 +21,22 @@ export async function estimateCost(
       body: { prompt, mode },
     });
     if (error || !data || data.error) return null;
+    return data as CostEstimate;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Direct estimation when the caller already knows the actionKey/tier.
+ * Thin re-export of aiClient.estimateCost.
+ */
+export async function estimateCostByActionKey(
+  actionKey: string,
+): Promise<CostEstimate | null> {
+  try {
+    const data = await estimateByActionKey(actionKey);
+    if (!data || data.error) return null;
     return data as CostEstimate;
   } catch {
     return null;
