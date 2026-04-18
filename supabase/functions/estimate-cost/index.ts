@@ -9,11 +9,29 @@ const corsHeaders = {
 
 const CREDIT_COSTS: Record<string, number> = {
   simple_task: 2,
+  simple_prompt: 2,
   simple_edit: 3,
+  edit_prompt: 3,
   medium_module: 5,
   complex_module: 8,
   full_app: 12,
 };
+
+const VALID_KEYS = new Set(Object.keys(CREDIT_COSTS));
+
+function classifyByPrompt(prompt: string, mode: "create" | "edit"): string {
+  const words = prompt.trim().split(/\s+/).length;
+  if (mode === "edit") {
+    return words < 15 ? "simple_edit" : words < 40 ? "medium_module" : "complex_module";
+  }
+  return words < 10
+    ? "simple_task"
+    : words < 30
+      ? "medium_module"
+      : words < 60
+        ? "complex_module"
+        : "full_app";
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -21,26 +39,25 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, mode } = await req.json();
+    const body = await req.json();
+    const { prompt, mode, actionKey } = body ?? {};
 
-    if (!prompt) {
+    let complexity: string;
+
+    if (typeof actionKey === "string" && VALID_KEYS.has(actionKey)) {
+      // Direct action key — caller already knows the tier
+      complexity = actionKey;
+    } else if (typeof prompt === "string" && prompt.trim().length > 0) {
+      // Heuristic from prompt + mode
+      complexity = classifyByPrompt(prompt, mode === "edit" ? "edit" : "create");
+    } else {
       return new Response(
-        JSON.stringify({ error: "prompt requerido" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ error: "Se requiere actionKey o prompt" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Simple heuristic for cost estimation
-    const words = prompt.trim().split(/\s+/).length;
-    let complexity: string;
-
-    if (mode === "edit") {
-      complexity = words < 15 ? "simple_edit" : words < 40 ? "medium_module" : "complex_module";
-    } else {
-      complexity = words < 10 ? "simple_task" : words < 30 ? "medium_module" : words < 60 ? "complex_module" : "full_app";
-    }
-
-    const cost = CREDIT_COSTS[complexity] || CREDIT_COSTS.medium_module;
+    const cost = CREDIT_COSTS[complexity] ?? CREDIT_COSTS.medium_module;
 
     // Check user credits
     const authHeader = req.headers.get("Authorization") || "";
@@ -72,17 +89,18 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         complexity,
+        actionKey: complexity,
         estimated_cost: cost,
         can_afford: canAfford,
         current_credits: currentCredits,
       }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (error) {
     console.error("estimate-cost error:", error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : "Error desconocido" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
