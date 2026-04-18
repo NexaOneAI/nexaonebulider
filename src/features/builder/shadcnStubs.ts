@@ -274,6 +274,438 @@ export const AlertDescription = React.forwardRef(function AlertDescription({ cla
 });
 `;
 
+/* ============================================================
+   Radix-based components — implemented natively (no Radix dep)
+   ============================================================ */
+
+const dialog = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const DialogCtx = React.createContext({ open: false, setOpen: () => {} });
+
+export function Dialog({ open: controlledOpen, onOpenChange, defaultOpen = false, children }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolled;
+  const setOpen = (v) => {
+    if (controlledOpen === undefined) setUncontrolled(v);
+    onOpenChange && onOpenChange(v);
+  };
+  return <DialogCtx.Provider value={{ open, setOpen }}>{children}</DialogCtx.Provider>;
+}
+export function DialogTrigger({ asChild, children, ...props }) {
+  const { setOpen } = React.useContext(DialogCtx);
+  const child = React.Children.only(children);
+  if (asChild && React.isValidElement(child)) {
+    return React.cloneElement(child, { onClick: (e) => { child.props.onClick && child.props.onClick(e); setOpen(true); } });
+  }
+  return <button {...props} onClick={(e) => { props.onClick && props.onClick(e); setOpen(true); }}>{children}</button>;
+}
+export function DialogPortal({ children }) { return <>{children}</>; }
+export function DialogClose({ asChild, children, ...props }) {
+  const { setOpen } = React.useContext(DialogCtx);
+  const onClick = () => setOpen(false);
+  if (asChild && React.isValidElement(children)) return React.cloneElement(children, { onClick });
+  return <button {...props} onClick={onClick}>{children}</button>;
+}
+export function DialogOverlay({ className, ...props }) {
+  const { open, setOpen } = React.useContext(DialogCtx);
+  if (!open) return null;
+  return <div onClick={() => setOpen(false)} className={cn("fixed inset-0 z-50 bg-black/80 backdrop-blur-sm animate-in fade-in", className)} {...props} />;
+}
+export function DialogContent({ className, children, ...props }) {
+  const { open, setOpen } = React.useContext(DialogCtx);
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (!open) return null;
+  return (
+    <>
+      <DialogOverlay />
+      <div role="dialog" className={cn("fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg sm:rounded-lg", className)} {...props}>
+        {children}
+        <button onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+      </div>
+    </>
+  );
+}
+export function DialogHeader({ className, ...props }) {
+  return <div className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)} {...props} />;
+}
+export function DialogFooter({ className, ...props }) {
+  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />;
+}
+export function DialogTitle({ className, ...props }) {
+  return <h2 className={cn("text-lg font-semibold leading-none tracking-tight", className)} {...props} />;
+}
+export function DialogDescription({ className, ...props }) {
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
+}
+`;
+
+const sheet = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const SheetCtx = React.createContext({ open: false, setOpen: () => {} });
+
+export function Sheet({ open: controlledOpen, onOpenChange, defaultOpen = false, children }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolled;
+  const setOpen = (v) => {
+    if (controlledOpen === undefined) setUncontrolled(v);
+    onOpenChange && onOpenChange(v);
+  };
+  return <SheetCtx.Provider value={{ open, setOpen }}>{children}</SheetCtx.Provider>;
+}
+export function SheetTrigger({ asChild, children, ...props }) {
+  const { setOpen } = React.useContext(SheetCtx);
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, { onClick: (e) => { children.props.onClick && children.props.onClick(e); setOpen(true); } });
+  }
+  return <button {...props} onClick={() => setOpen(true)}>{children}</button>;
+}
+export function SheetClose({ asChild, children, ...props }) {
+  const { setOpen } = React.useContext(SheetCtx);
+  const onClick = () => setOpen(false);
+  if (asChild && React.isValidElement(children)) return React.cloneElement(children, { onClick });
+  return <button {...props} onClick={onClick}>{children}</button>;
+}
+const SIDES = {
+  top: "inset-x-0 top-0 border-b data-[state=open]:slide-in-from-top",
+  bottom: "inset-x-0 bottom-0 border-t",
+  left: "inset-y-0 left-0 h-full w-3/4 border-r sm:max-w-sm",
+  right: "inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
+};
+export function SheetContent({ side = "right", className, children, ...props }) {
+  const { open, setOpen } = React.useContext(SheetCtx);
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (!open) return null;
+  return (
+    <>
+      <div onClick={() => setOpen(false)} className="fixed inset-0 z-50 bg-black/80" />
+      <div className={cn("fixed z-50 gap-4 bg-background p-6 shadow-lg", SIDES[side] || SIDES.right, className)} {...props}>
+        {children}
+        <button onClick={() => setOpen(false)} className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+      </div>
+    </>
+  );
+}
+export function SheetHeader({ className, ...props }) {
+  return <div className={cn("flex flex-col space-y-2 text-center sm:text-left", className)} {...props} />;
+}
+export function SheetFooter({ className, ...props }) {
+  return <div className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)} {...props} />;
+}
+export function SheetTitle({ className, ...props }) {
+  return <h2 className={cn("text-lg font-semibold text-foreground", className)} {...props} />;
+}
+export function SheetDescription({ className, ...props }) {
+  return <p className={cn("text-sm text-muted-foreground", className)} {...props} />;
+}
+`;
+
+const popover = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const PopoverCtx = React.createContext({ open: false, setOpen: () => {}, anchorRef: null });
+
+export function Popover({ open: controlledOpen, onOpenChange, defaultOpen = false, children }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolled;
+  const setOpen = (v) => {
+    if (controlledOpen === undefined) setUncontrolled(v);
+    onOpenChange && onOpenChange(v);
+  };
+  const anchorRef = React.useRef(null);
+  return <PopoverCtx.Provider value={{ open, setOpen, anchorRef }}>{children}</PopoverCtx.Provider>;
+}
+export function PopoverTrigger({ asChild, children, ...props }) {
+  const { open, setOpen, anchorRef } = React.useContext(PopoverCtx);
+  const handleClick = () => setOpen(!open);
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, { ref: anchorRef, onClick: handleClick });
+  }
+  return <button ref={anchorRef} {...props} onClick={handleClick}>{children}</button>;
+}
+export function PopoverContent({ className, align = "center", sideOffset = 4, children, ...props }) {
+  const { open, setOpen, anchorRef } = React.useContext(PopoverCtx);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target) && anchorRef.current && !anchorRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+  if (!open) return null;
+  const alignClass = align === "start" ? "left-0" : align === "end" ? "right-0" : "left-1/2 -translate-x-1/2";
+  return (
+    <div ref={ref} className={cn("absolute z-50 mt-1 min-w-[8rem] rounded-md border bg-popover p-4 text-popover-foreground shadow-md", alignClass, className)} style={{ marginTop: sideOffset }} {...props}>
+      {children}
+    </div>
+  );
+}
+`;
+
+const tooltip = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+export function TooltipProvider({ children, delayDuration }) { return <>{children}</>; }
+
+const TooltipCtx = React.createContext({ open: false, setOpen: () => {} });
+
+export function Tooltip({ children, defaultOpen = false, open: controlledOpen, onOpenChange }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolled;
+  const setOpen = (v) => {
+    if (controlledOpen === undefined) setUncontrolled(v);
+    onOpenChange && onOpenChange(v);
+  };
+  return (
+    <TooltipCtx.Provider value={{ open, setOpen }}>
+      <span className="relative inline-flex" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}>{children}</span>
+    </TooltipCtx.Provider>
+  );
+}
+export function TooltipTrigger({ asChild, children, ...props }) {
+  if (asChild && React.isValidElement(children)) return children;
+  return <span {...props}>{children}</span>;
+}
+export function TooltipContent({ className, side = "top", sideOffset = 4, children, ...props }) {
+  const { open } = React.useContext(TooltipCtx);
+  if (!open) return null;
+  const sideClass = {
+    top: "bottom-full left-1/2 -translate-x-1/2 mb-1",
+    bottom: "top-full left-1/2 -translate-x-1/2 mt-1",
+    left: "right-full top-1/2 -translate-y-1/2 mr-1",
+    right: "left-full top-1/2 -translate-y-1/2 ml-1",
+  }[side] || "bottom-full";
+  return (
+    <span role="tooltip" className={cn("absolute z-50 whitespace-nowrap rounded-md bg-popover px-3 py-1.5 text-xs text-popover-foreground shadow-md border", sideClass, className)} {...props}>
+      {children}
+    </span>
+  );
+}
+`;
+
+const dropdownMenu = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const MenuCtx = React.createContext({ open: false, setOpen: () => {}, anchorRef: null });
+
+export function DropdownMenu({ open: controlledOpen, onOpenChange, defaultOpen = false, children }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultOpen);
+  const open = controlledOpen !== undefined ? controlledOpen : uncontrolled;
+  const setOpen = (v) => {
+    if (controlledOpen === undefined) setUncontrolled(v);
+    onOpenChange && onOpenChange(v);
+  };
+  const anchorRef = React.useRef(null);
+  return (
+    <MenuCtx.Provider value={{ open, setOpen, anchorRef }}>
+      <div className="relative inline-block">{children}</div>
+    </MenuCtx.Provider>
+  );
+}
+export function DropdownMenuTrigger({ asChild, children, ...props }) {
+  const { open, setOpen, anchorRef } = React.useContext(MenuCtx);
+  const handleClick = () => setOpen(!open);
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children, { ref: anchorRef, onClick: handleClick });
+  }
+  return <button ref={anchorRef} {...props} onClick={handleClick}>{children}</button>;
+}
+export function DropdownMenuContent({ className, align = "end", sideOffset = 4, children, ...props }) {
+  const { open, setOpen, anchorRef } = React.useContext(MenuCtx);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target) && anchorRef.current && !anchorRef.current.contains(e.target)) setOpen(false);
+    };
+    const onKey = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onClick); document.removeEventListener("keydown", onKey); };
+  }, [open]);
+  if (!open) return null;
+  const alignClass = align === "start" ? "left-0" : align === "end" ? "right-0" : "left-1/2 -translate-x-1/2";
+  return (
+    <div ref={ref} className={cn("absolute z-50 mt-1 min-w-[8rem] overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md", alignClass, className)} style={{ marginTop: sideOffset }} {...props}>
+      {children}
+    </div>
+  );
+}
+export function DropdownMenuItem({ className, onSelect, onClick, inset, children, ...props }) {
+  const { setOpen } = React.useContext(MenuCtx);
+  return (
+    <div
+      role="menuitem"
+      className={cn("relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground", inset && "pl-8", className)}
+      onClick={(e) => { onClick && onClick(e); onSelect && onSelect(e); setOpen(false); }}
+      {...props}
+    >{children}</div>
+  );
+}
+export function DropdownMenuLabel({ className, inset, ...props }) {
+  return <div className={cn("px-2 py-1.5 text-sm font-semibold", inset && "pl-8", className)} {...props} />;
+}
+export function DropdownMenuSeparator({ className, ...props }) {
+  return <div className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />;
+}
+export function DropdownMenuShortcut({ className, ...props }) {
+  return <span className={cn("ml-auto text-xs tracking-widest opacity-60", className)} {...props} />;
+}
+export function DropdownMenuGroup({ children }) { return <>{children}</>; }
+export function DropdownMenuPortal({ children }) { return <>{children}</>; }
+`;
+
+const select = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const SelectCtx = React.createContext({ value: "", setValue: () => {}, open: false, setOpen: () => {}, items: new Map() });
+
+export function Select({ value: controlledValue, defaultValue = "", onValueChange, children, disabled }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultValue);
+  const value = controlledValue !== undefined ? controlledValue : uncontrolled;
+  const [open, setOpen] = React.useState(false);
+  const itemsRef = React.useRef(new Map());
+  const setValue = (v) => {
+    if (controlledValue === undefined) setUncontrolled(v);
+    onValueChange && onValueChange(v);
+    setOpen(false);
+  };
+  return (
+    <SelectCtx.Provider value={{ value, setValue, open, setOpen, items: itemsRef.current, disabled }}>
+      <div className="relative">{children}</div>
+    </SelectCtx.Provider>
+  );
+}
+export function SelectGroup({ children }) { return <div role="group">{children}</div>; }
+export function SelectValue({ placeholder, className }) {
+  const { value, items } = React.useContext(SelectCtx);
+  const label = items.get(value);
+  return <span className={cn(className, !value && "text-muted-foreground")}>{label || value || placeholder}</span>;
+}
+export function SelectTrigger({ className, children, ...props }) {
+  const { open, setOpen, disabled } = React.useContext(SelectCtx);
+  return (
+    <button
+      type="button"
+      onClick={() => !disabled && setOpen(!open)}
+      disabled={disabled}
+      className={cn("flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50", className)}
+      {...props}
+    >
+      {children}
+      <span className="ml-2 opacity-50">▼</span>
+    </button>
+  );
+}
+export function SelectContent({ className, children, position, ...props }) {
+  const { open, setOpen } = React.useContext(SelectCtx);
+  const ref = React.useRef(null);
+  React.useEffect(() => {
+    if (!open) return;
+    const onClick = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [open]);
+  if (!open) return null;
+  return (
+    <div ref={ref} className={cn("absolute z-50 mt-1 max-h-60 w-full min-w-[8rem] overflow-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+export function SelectLabel({ className, ...props }) {
+  return <div className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)} {...props} />;
+}
+export function SelectItem({ className, children, value, ...props }) {
+  const { value: selected, setValue, items } = React.useContext(SelectCtx);
+  React.useEffect(() => { items.set(value, typeof children === "string" ? children : value); return () => { items.delete(value); }; }, [value, children]);
+  const isSelected = selected === value;
+  return (
+    <div
+      role="option"
+      aria-selected={isSelected}
+      onClick={() => setValue(value)}
+      className={cn("relative flex w-full cursor-pointer select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground", className)}
+      {...props}
+    >
+      {isSelected && <span className="absolute left-2">✓</span>}
+      {children}
+    </div>
+  );
+}
+export function SelectSeparator({ className, ...props }) {
+  return <div className={cn("-mx-1 my-1 h-px bg-muted", className)} {...props} />;
+}
+export function SelectScrollUpButton({ className, ...props }) { return null; }
+export function SelectScrollDownButton({ className, ...props }) { return null; }
+`;
+
+const tabs = `
+import * as React from "react";
+import { cn } from "@/lib/utils";
+
+const TabsCtx = React.createContext({ value: "", setValue: () => {} });
+
+export function Tabs({ value: controlledValue, defaultValue = "", onValueChange, children, className, ...props }) {
+  const [uncontrolled, setUncontrolled] = React.useState(defaultValue);
+  const value = controlledValue !== undefined ? controlledValue : uncontrolled;
+  const setValue = (v) => {
+    if (controlledValue === undefined) setUncontrolled(v);
+    onValueChange && onValueChange(v);
+  };
+  return (
+    <TabsCtx.Provider value={{ value, setValue }}>
+      <div className={className} {...props}>{children}</div>
+    </TabsCtx.Provider>
+  );
+}
+export function TabsList({ className, ...props }) {
+  return <div role="tablist" className={cn("inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground", className)} {...props} />;
+}
+export function TabsTrigger({ className, value, children, ...props }) {
+  const { value: active, setValue } = React.useContext(TabsCtx);
+  const isActive = active === value;
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      onClick={() => setValue(value)}
+      className={cn("inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50", isActive ? "bg-background text-foreground shadow-sm" : "", className)}
+      {...props}
+    >{children}</button>
+  );
+}
+export function TabsContent({ className, value, children, ...props }) {
+  const { value: active } = React.useContext(TabsCtx);
+  if (active !== value) return null;
+  return (
+    <div role="tabpanel" className={cn("mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring", className)} {...props}>
+      {children}
+    </div>
+  );
+}
+`;
+
 export const SHADCN_STUBS: Record<string, string> = {
   button,
   card,
@@ -288,4 +720,13 @@ export const SHADCN_STUBS: Record<string, string> = {
   progress,
   skeleton,
   alert,
+  dialog,
+  sheet,
+  popover,
+  tooltip,
+  dropdown: dropdownMenu,
+  'dropdown-menu': dropdownMenu,
+  select,
+  tabs,
 };
+

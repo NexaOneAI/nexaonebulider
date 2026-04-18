@@ -283,6 +283,7 @@ function normalisePath(p: string): string {
 const SHADCN_COMPONENTS = [
   'button', 'card', 'input', 'label', 'textarea', 'badge', 'separator',
   'avatar', 'switch', 'checkbox', 'progress', 'skeleton', 'alert',
+  'dialog', 'sheet', 'popover', 'tooltip', 'dropdown-menu', 'select', 'tabs',
 ];
 
 function collectUsedShadcn(files: GeneratedFile[]): string[] {
