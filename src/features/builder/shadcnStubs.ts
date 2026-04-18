@@ -274,9 +274,6 @@ export const AlertDescription = React.forwardRef(function AlertDescription({ cla
 });
 `;
 
-export const SHADCN_STUBS: Record<string, string> = {
-  button,
-  card,
 /* ============================================================
    Radix-based components — implemented natively (no Radix dep)
    ============================================================ */
