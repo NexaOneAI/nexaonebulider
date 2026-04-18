@@ -84,3 +84,21 @@ export const AI_PROVIDERS: AIProviderConfig[] = [
   { id: 'grok/grok-2', name: 'Grok 2', label: 'Grok 2 (próximamente)', available: false, provider: 'grok' },
   { id: 'grok/grok-2-mini', name: 'Grok 2 Mini', label: 'Grok 2 Mini (próximamente)', available: false, provider: 'grok' },
 ];
+
+// ===== V2 contract: looser request shape + flat output =====
+export interface GenerateAppRequest {
+  projectId: string;
+  prompt: string;
+  mode?: AiMode;
+  actionKey?: AiActionKey;
+  model?: string;
+  provider?: AiProvider;
+}
+
+export interface BuilderOutput {
+  projectName: string;
+  description?: string;
+  dependencies: string[];
+  files: Record<string, string>;
+  previewCode?: string;
+}
