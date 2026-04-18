@@ -3,7 +3,7 @@ import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2 } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 
@@ -21,6 +21,8 @@ export function ChatPanel() {
   const tier = useBuilderStore((s) => s.tier);
   const setTier = useBuilderStore((s) => s.setTier);
   const filesCount = useBuilderStore((s) => s.files.length);
+  const previewError = useBuilderStore((s) => s.previewError);
+  const fixWithAI = useBuilderStore((s) => s.fixWithAI);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
 
@@ -159,6 +161,24 @@ export function ChatPanel() {
           <span className="text-[10px] text-muted-foreground">
             {creditsRemaining} créditos disponibles
           </span>
+        </div>
+      )}
+
+      {/* Preview runtime error → Fix with AI */}
+      {previewError && !loading && (
+        <div className="border-t border-destructive/30 bg-destructive/5 px-3 py-2">
+          <div className="mb-1.5 flex items-start gap-1.5">
+            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
+            <p className="line-clamp-2 text-[11px] text-destructive/90">{previewError.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => fixWithAI()}
+            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+          >
+            <Wand2 className="h-3 w-3" />
+            Arreglar con IA (3 créditos)
+          </button>
         </div>
       )}
 

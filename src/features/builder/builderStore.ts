@@ -20,7 +20,15 @@ interface BuilderActions {
   toggleChat: () => void;
   sendPrompt: (prompt: string, tierOverride?: Tier) => Promise<void>;
   loadVersion: (versionId: string) => Promise<void>;
+  setPreviewError: (err: PreviewError | null) => void;
+  fixWithAI: () => Promise<void>;
   reset: (projectId: string) => void;
+}
+
+interface PreviewError {
+  message: string;
+  stack: string;
+  at: number;
 }
 
 interface ExtendedBuilderState extends BuilderState {
@@ -29,6 +37,7 @@ interface ExtendedBuilderState extends BuilderState {
   creditsRemaining: number;
   tier: Tier | null; // optional user override
   lastTier: string | null; // last tier actually charged
+  previewError: PreviewError | null;
 }
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
@@ -48,6 +57,7 @@ const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   creditsRemaining: -1,
   tier: null,
   lastTier: null,
+  previewError: null,
 };
 
 export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((set, get) => ({
@@ -64,6 +74,16 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
   toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
 
   reset: (projectId) => set({ ...initialState, projectId }),
+
+  setPreviewError: (err) => set({ previewError: err }),
+
+  fixWithAI: async () => {
+    const err = get().previewError;
+    if (!err) return;
+    const prompt = `El preview lanza el siguiente error en runtime, arréglalo:\n\n${err.message}\n\n${err.stack}`.slice(0, 2000);
+    set({ previewError: null });
+    await get().sendPrompt(prompt, 'simple_edit');
+  },
 
   loadVersion: async (versionId: string) => {
     const { data, error } = await supabase
@@ -141,6 +161,7 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
         creditsRemaining: meta?.credits_remaining ?? -1,
         lastTier: meta?.tier || null,
         tier: null, // reset override after use
+        previewError: null, // clear stale errors on new generation
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
