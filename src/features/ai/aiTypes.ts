@@ -22,12 +22,37 @@ export type AiMode = 'create' | 'edit';
 
 export type AiProvider = 'openai' | 'gemini' | 'claude' | 'grok' | 'lovable' | 'custom';
 
+/**
+ * Lifecycle status of a model in the UI:
+ * - 'ready'        → fully wired, selectable, calls succeed today
+ * - 'preview'      → adapter exists but requires a backend secret (e.g. ANTHROPIC_API_KEY).
+ *                    Visible & selectable in UI as "Preparado", but requests will fall back
+ *                    to the Lovable Gateway until the secret is configured.
+ * - 'unavailable'  → not implemented; shown disabled with "Próximamente".
+ */
+export type AiModelStatus = 'ready' | 'preview' | 'unavailable';
+
 export interface AiModelOption {
   id: string;
   label: string;
   provider: AiProvider;
-  enabled: boolean;
-  requiresKey?: boolean;
+  status: AiModelStatus;
+  /** Backend secret name required to fully activate this model (used in tooltips). */
+  requiresSecret?: string;
+}
+
+/**
+ * Infer the AiProvider from a model id by prefix.
+ * Mirrors the backend logic in supabase/functions/generate-app/index.ts.
+ */
+export function inferProviderFromModel(model: string | undefined): AiProvider {
+  const m = (model ?? '').toLowerCase();
+  if (m.startsWith('openai/')) return 'openai';
+  if (m.startsWith('google/') || m.startsWith('gemini/')) return 'gemini';
+  if (m.startsWith('claude/') || m.startsWith('anthropic/')) return 'claude';
+  if (m.startsWith('grok/') || m.startsWith('xai/')) return 'grok';
+  if (m.startsWith('custom/')) return 'custom';
+  return 'lovable';
 }
 
 export type AiActionKey =

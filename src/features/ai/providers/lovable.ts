@@ -20,7 +20,13 @@ class LovableProvider implements AIProviderAdapter {
 
   async generate(prompt: string, model?: string, opts: GenerateOptions = {}): Promise<AIStructuredResponse> {
     const { data, error } = await supabase.functions.invoke('generate-app', {
-      body: { prompt, model, projectId: opts.projectId, userTier: opts.userTier },
+      body: {
+        prompt,
+        model,
+        provider: opts.provider,
+        projectId: opts.projectId,
+        userTier: opts.userTier,
+      },
     });
     if (error) throw new Error(error.message || 'Error en Lovable AI Gateway');
     if (data?.error) throw new Error(data.error);
@@ -38,6 +44,7 @@ class LovableProvider implements AIProviderAdapter {
       body: {
         prompt,
         model,
+        provider: opts.provider,
         currentFiles: filesArray,
         projectId: opts.projectId,
         userTier: opts.userTier,

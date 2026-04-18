@@ -1,4 +1,4 @@
-import type { AIStructuredResponse } from '../aiTypes';
+import type { AIStructuredResponse, AiProvider } from '../aiTypes';
 import type { GeneratedFile } from '../../projects/projectTypes';
 
 export type Tier = 'simple_task' | 'simple_edit' | 'medium_module' | 'complex_module' | 'full_app';
@@ -6,6 +6,8 @@ export type Tier = 'simple_task' | 'simple_edit' | 'medium_module' | 'complex_mo
 export interface GenerateOptions {
   projectId?: string;
   userTier?: Tier;
+  /** Explicit provider override; if omitted the backend infers from model prefix. */
+  provider?: AiProvider;
 }
 
 /**
