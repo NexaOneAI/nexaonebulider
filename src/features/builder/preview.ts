@@ -192,3 +192,18 @@ function escapeHtml(text: string): string {
 function escapeJs(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
+
+/**
+ * Find top-level `function Name`, `class Name`, `const/let/var Name = ...`
+ * declarations so we can re-expose them as window globals (allowing
+ * subsequent <script> blocks to use them).
+ */
+function extractTopLevelNames(code: string): string[] {
+  const names = new Set<string>();
+  const fnRe = /^(?:\s*)(?:function|class)\s+([A-Za-z_$][\w$]*)/gm;
+  const varRe = /^(?:\s*)(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/gm;
+  let m: RegExpExecArray | null;
+  while ((m = fnRe.exec(code))) names.add(m[1]);
+  while ((m = varRe.exec(code))) names.add(m[1]);
+  return [...names];
+}
