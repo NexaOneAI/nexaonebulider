@@ -51,17 +51,12 @@ export function generatePreviewHtml(
     .map((f) => f.content)
     .join('\n');
 
-  const componentScripts = otherFiles
-    .map((f) => {
-      const js = transpileSafe(f.content, f.path);
-      const exposed = extractTopLevelNames(js)
-        .map((n) => `try{window.${n}=${n};}catch(_){}`)
-        .join('');
-      // Run at top-level (no IIFE / no try-wrapper) so var/function/class
-      // become globals naturally; then re-expose on window for cross-script visibility.
-      return `<script>\n${js}\n${exposed}\n<\/script>`;
-    })
-    .join('\n');
+  // Concatenate ALL transpiled files into a SINGLE script so const/let
+  // declarations share scope (otherwise each <script> creates its own
+  // module scope and `Sidebar` from one script isn't visible in another).
+  const allTranspiled = otherFiles
+    .map((f) => `// ===== ${f.path} =====\n${transpileSafe(f.content, f.path)}`)
+    .join('\n\n');
 
   const appJs = transpileSafe(appFile.content, appFile.path);
 
