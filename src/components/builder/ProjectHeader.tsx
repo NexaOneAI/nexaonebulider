@@ -9,7 +9,12 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import { exportProjectZip } from '@/features/builder/zipExport';
 import { useAuth } from '@/hooks/useAuth';
 
-export function ProjectHeader() {
+interface Props {
+  onToggleHistory?: () => void;
+  historyOpen?: boolean;
+}
+
+export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const navigate = useNavigate();
   const { profile } = useAuth();
   const {
@@ -77,7 +82,13 @@ export function ProjectHeader() {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
           <Save className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Historial de versiones próximamente')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-8 w-8 ${historyOpen ? 'text-primary' : ''}`}
+          onClick={onToggleHistory}
+          title="Historial de versiones"
+        >
           <History className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}>
