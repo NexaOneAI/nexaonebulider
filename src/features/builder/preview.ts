@@ -54,7 +54,12 @@ export function generatePreviewHtml(
   const componentScripts = otherFiles
     .map((f) => {
       const js = transpileSafe(f.content, f.path);
-      return `<script>\ntry {\n${js}\n} catch(__e) { console.error('[${escapeJs(f.path)}]', __e); }\n<\/script>`;
+      const exposed = extractTopLevelNames(js)
+        .map((n) => `try{window.${n}=${n};}catch(_){}`)
+        .join('');
+      // Run at top-level (no IIFE / no try-wrapper) so var/function/class
+      // become globals naturally; then re-expose on window for cross-script visibility.
+      return `<script>\n${js}\n${exposed}\n<\/script>`;
     })
     .join('\n');
 
