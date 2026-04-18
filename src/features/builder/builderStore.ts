@@ -8,6 +8,7 @@ import type { Tier } from '../ai/providers/types';
 import { generateId } from '@/lib/utils';
 import { DEFAULT_MODEL } from '@/lib/constants';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/features/auth/authStore';
 
 interface BuilderActions {
   setProjectName: (name: string) => void;
@@ -163,6 +164,9 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
         tier: null, // reset override after use
         previewError: null, // clear stale errors on new generation
       });
+
+      // Refresh global auth profile so header credits stay in sync
+      useAuthStore.getState().refreshProfile().catch(() => {});
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
       const aiMsg: AIMessage = {
