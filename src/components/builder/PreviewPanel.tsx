@@ -27,8 +27,8 @@ export function PreviewPanel() {
     return () => window.removeEventListener('message', handler);
   }, [setPreviewError]);
 
-  const hasContent = previewCode || selectedFile;
-  const showingCode = showCode && selectedFile;
+  const hasContent = Boolean(previewCode) || files.length > 0;
+  const showingCode = showCode && Boolean(selectedFile);
 
   return (
     <div className="flex flex-1 flex-col bg-background">
@@ -39,10 +39,7 @@ export function PreviewPanel() {
             variant={!showingCode ? 'default' : 'ghost'}
             size="sm"
             className="h-7 text-xs"
-            onClick={() => {
-              setShowCode(false);
-              setSelectedFile(null);
-            }}
+            onClick={() => setShowCode(false)}
           >
             <Eye className="mr-1 h-3 w-3" />
             Preview
@@ -51,6 +48,7 @@ export function PreviewPanel() {
             variant={showingCode ? 'default' : 'ghost'}
             size="sm"
             className="h-7 text-xs"
+            disabled={files.length === 0}
             onClick={() => {
               if (!selectedFile && files.length > 0) {
                 setSelectedFile(files[0]);
@@ -61,7 +59,7 @@ export function PreviewPanel() {
             <Code2 className="mr-1 h-3 w-3" />
             Código
           </Button>
-          {selectedFile && showingCode && (
+          {showingCode && selectedFile && (
             <span className="ml-2 font-mono text-xs text-muted-foreground">
               {selectedFile.path}
             </span>
@@ -79,13 +77,18 @@ export function PreviewPanel() {
               <CodeEditor file={selectedFile} />
             ) : previewCode ? (
               <iframe
+                key={previewCode.length}
                 srcDoc={previewCode}
                 className="h-full w-full flex-1"
                 sandbox="allow-scripts allow-same-origin"
                 title="Live Preview"
                 style={{ border: 'none', background: 'white', display: 'block' }}
               />
-            ) : null}
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                Selecciona un archivo o genera la preview
+              </div>
+            )}
           </div>
         </div>
       ) : (
