@@ -267,7 +267,7 @@ function transpileSafe(src: string, filePath: string): string {
     const out = transform(src, {
       transforms,
       jsxRuntime: 'automatic',
-      production: false,
+      production: true,
       filePath,
     });
     return out.code;
