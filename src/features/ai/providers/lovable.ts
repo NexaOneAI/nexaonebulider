@@ -1,14 +1,7 @@
-import type { AIProviderAdapter } from './types';
+import type { AIProviderAdapter, GenerateOptions } from './types';
 import type { AIStructuredResponse } from '../aiTypes';
 import { supabase } from '@/integrations/supabase/client';
 import type { GeneratedFile } from '../../projects/projectTypes';
-
-export type Tier = 'simple_task' | 'simple_edit' | 'medium_module' | 'complex_module' | 'full_app';
-
-interface GenerateOptions {
-  projectId?: string;
-  userTier?: Tier;
-}
 
 /**
  * Lovable AI Gateway provider — calls edge functions:
