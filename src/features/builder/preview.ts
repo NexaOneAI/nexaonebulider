@@ -106,6 +106,7 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
     "imports": {
       "react": "https://esm.sh/react@18.3.1",
       "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+      "react/jsx-dev-runtime": "https://esm.sh/react@18.3.1/jsx-dev-runtime",
       "react-dom": "https://esm.sh/react-dom@18.3.1",
       "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
       "react-router-dom": "https://esm.sh/react-router-dom@6.26.2?external=react,react-dom",
@@ -266,7 +267,7 @@ function transpileSafe(src: string, filePath: string): string {
     const out = transform(src, {
       transforms,
       jsxRuntime: 'automatic',
-      production: false,
+      production: true,
       filePath,
     });
     return out.code;
