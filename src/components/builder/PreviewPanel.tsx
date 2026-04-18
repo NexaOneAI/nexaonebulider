@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
 import { Monitor, Code2, Eye } from 'lucide-react';
@@ -10,6 +11,21 @@ export function PreviewPanel() {
   const showCode = useBuilderStore((s) => s.showCode);
   const setShowCode = useBuilderStore((s) => s.setShowCode);
   const setSelectedFile = useBuilderStore((s) => s.setSelectedFile);
+  const setPreviewError = useBuilderStore((s) => s.setPreviewError);
+
+  useEffect(() => {
+    const handler = (e: MessageEvent) => {
+      const d = e.data;
+      if (!d || d.source !== 'lovable-preview') return;
+      if (d.kind === 'preview-error') {
+        setPreviewError({ message: d.message || '', stack: d.stack || '', at: Date.now() });
+      } else if (d.kind === 'preview-ready') {
+        setPreviewError(null);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [setPreviewError]);
 
   const hasContent = previewCode || selectedFile;
   const showingCode = showCode && selectedFile;

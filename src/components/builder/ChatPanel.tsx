@@ -3,7 +3,7 @@ import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2 } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 
@@ -21,6 +21,8 @@ export function ChatPanel() {
   const tier = useBuilderStore((s) => s.tier);
   const setTier = useBuilderStore((s) => s.setTier);
   const filesCount = useBuilderStore((s) => s.files.length);
+  const previewError = useBuilderStore((s) => s.previewError);
+  const fixWithAI = useBuilderStore((s) => s.fixWithAI);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
 
