@@ -20,6 +20,16 @@ export interface AIStructuredResponse {
 // ===== Strict client contract (used by aiClient.ts) =====
 export type AiMode = 'create' | 'edit';
 
+export type AiProvider = 'openai' | 'gemini' | 'claude' | 'grok' | 'lovable' | 'custom';
+
+export interface AiModelOption {
+  id: string;
+  label: string;
+  provider: AiProvider;
+  enabled: boolean;
+  requiresKey?: boolean;
+}
+
 export type AiActionKey =
   | 'simple_prompt'
   | 'simple_task'
