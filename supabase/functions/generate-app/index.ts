@@ -9,65 +9,79 @@ import {
   recordDebit,
   type Tier,
 } from "../_shared/credits.ts";
-import { parseAIResponse } from "../_shared/parser.ts";
+import { callAiProvider } from "../_shared/ai-router.ts";
+import type { AiProvider, BuilderOutput } from "../_shared/types.ts";
 
-const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer. Generate complete, production-ready React applications.
+/**
+ * Maps a model id (e.g. "openai/gpt-5", "google/gemini-3-flash-preview",
+ * "claude/claude-3-5-sonnet", "grok/grok-2") to an AiProvider.
+ * Default: lovable (gateway).
+ */
+function inferProvider(model: string | undefined, override?: AiProvider): AiProvider {
+  if (override) return override;
+  const m = (model ?? "").toLowerCase();
+  if (m.startsWith("openai/")) return "openai";
+  if (m.startsWith("google/") || m.startsWith("gemini/")) return "gemini";
+  if (m.startsWith("claude/") || m.startsWith("anthropic/")) return "claude";
+  if (m.startsWith("grok/") || m.startsWith("xai/")) return "grok";
+  return "lovable";
+}
 
-Use the generate_app tool to return your response with this structure:
-- projectName: short kebab-case name
-- description: brief description
-- files: array of { path, content, language } — ALWAYS include src/App.tsx, src/main.tsx, index.html
-- dependencies: npm package map
-- pages, components: string arrays
+/**
+ * Normalize BuilderOutput (files as Record<path,content>, dependencies as string[])
+ * to the legacy shape used by project_versions / clients:
+ *   files: Array<{ path, content, language }>
+ *   dependencies: Record<name, version>
+ */
+function normalizeForStorage(output: BuilderOutput) {
+  const filesArray = Object.entries(output.files ?? {}).map(([path, content]) => ({
+    path,
+    content,
+    language: inferLanguage(path),
+  }));
 
-Rules:
-- Use Tailwind CSS utility classes
-- Write clean, modern TypeScript/React
-- Make UI beautiful, responsive, and functional
-- Include all imports/exports
-- The app must render without errors`;
+  const depsRecord: Record<string, string> = {};
+  for (const dep of output.dependencies ?? []) {
+    if (typeof dep !== "string") continue;
+    const at = dep.lastIndexOf("@");
+    if (at > 0) {
+      depsRecord[dep.slice(0, at)] = dep.slice(at + 1);
+    } else {
+      depsRecord[dep] = "latest";
+    }
+  }
 
-const TOOL_SCHEMA = {
-  type: "function" as const,
-  function: {
-    name: "generate_app",
-    description: "Generate a complete React application",
-    parameters: {
-      type: "object",
-      properties: {
-        projectName: { type: "string" },
-        description: { type: "string" },
-        files: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              path: { type: "string" },
-              content: { type: "string" },
-              language: { type: "string" },
-            },
-            required: ["path", "content", "language"],
-            additionalProperties: false,
-          },
-        },
-        dependencies: { type: "object", additionalProperties: { type: "string" } },
-        pages: { type: "array", items: { type: "string" } },
-        components: { type: "array", items: { type: "string" } },
-      },
-      required: ["projectName", "description", "files", "dependencies", "pages", "components"],
-      additionalProperties: false,
-    },
-  },
-};
+  return {
+    projectName: output.projectName ?? "Mi proyecto",
+    description: output.description ?? "",
+    files: filesArray,
+    dependencies: depsRecord,
+    pages: [] as string[],
+    components: [] as string[],
+    previewCode: output.previewCode,
+  };
+}
+
+function inferLanguage(path: string): string {
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  switch (ext) {
+    case "tsx": return "typescript";
+    case "ts": return "typescript";
+    case "jsx": return "javascript";
+    case "js": return "javascript";
+    case "css": return "css";
+    case "html": return "html";
+    case "json": return "json";
+    case "md": return "markdown";
+    default: return "text";
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) return jsonResponse({ error: "LOVABLE_API_KEY no configurada" }, 500);
-
   try {
-    const { prompt, model, projectId, userTier } = await req.json();
+    const { prompt, model, projectId, userTier, provider: providerOverride } = await req.json();
 
     if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
       return jsonResponse({ error: "El prompt es requerido" }, 400);
@@ -97,40 +111,13 @@ serve(async (req) => {
     }
 
     const aiModel = model || "google/gemini-3-flash-preview";
+    const provider: AiProvider = inferProvider(aiModel, providerOverride as AiProvider | undefined);
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: aiModel,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: prompt },
-          ],
-          tools: [TOOL_SCHEMA],
-          tool_choice: { type: "function", function: { name: "generate_app" } },
-        }),
-      });
+      const output = await callAiProvider(provider, prompt, aiModel);
+      const result = normalizeForStorage(output);
 
-      if (!response.ok) {
-        if (!creditCheck.isUnlimited) {
-          await refundCredits(admin, user.id, cost, `AI gateway ${response.status}`, aiModel, projectId);
-        }
-        if (response.status === 429) return jsonResponse({ error: "Demasiadas solicitudes. Espera unos segundos." }, 429);
-        if (response.status === 402) return jsonResponse({ error: "Créditos de IA agotados en el gateway." }, 402);
-        const errText = await response.text();
-        console.error("AI gateway error:", response.status, errText);
-        return jsonResponse({ error: `AI gateway error: ${response.status}` }, 502);
-      }
-
-      const data = await response.json();
-      const result = parseAIResponse(data);
-
-      if (!result || !Array.isArray(result.files) || result.files.length === 0) {
+      if (!result.files || result.files.length === 0) {
         if (!creditCheck.isUnlimited) {
           await refundCredits(admin, user.id, cost, "Respuesta inválida de IA", aiModel, projectId);
         }
@@ -150,9 +137,7 @@ serve(async (req) => {
           .limit(1);
 
         const nextVersion = (versions?.[0]?.version_number ?? 0) + 1;
-
-        // Generate preview HTML for restoration
-        const previewCode = generatePreviewSnapshot(result.files, result.projectName);
+        const previewCode = result.previewCode || generatePreviewSnapshot(result.files);
 
         await admin.from("project_versions").insert({
           project_id: projectId,
@@ -175,7 +160,7 @@ serve(async (req) => {
             project_id: projectId,
             user_id: user.id,
             role: "assistant",
-            content: `App generada con ${result.files.length} archivos (${cost} créditos · ${tier})`,
+            content: `App generada con ${result.files.length} archivos (${cost} créditos · ${tier} · ${provider})`,
             model: aiModel,
           },
         ]);
@@ -187,6 +172,7 @@ serve(async (req) => {
           credits_used: cost,
           credits_remaining: creditCheck.isUnlimited ? -1 : creditCheck.balance,
           model: aiModel,
+          provider,
           tier,
           mode: "create",
           version: projectId ? "saved" : "unsaved",
@@ -211,8 +197,7 @@ serve(async (req) => {
   }
 });
 
-function generatePreviewSnapshot(files: any[], _name: string): string {
-  // Simple snapshot — full preview is generated client-side
+function generatePreviewSnapshot(files: Array<{ path: string; content: string }>): string {
   const appFile = files.find((f) => f.path === "src/App.tsx" || f.path === "src/App.jsx");
   return appFile?.content?.substring(0, 5000) || "";
 }
