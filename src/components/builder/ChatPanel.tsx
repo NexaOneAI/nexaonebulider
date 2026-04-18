@@ -24,12 +24,14 @@ export function ChatPanel() {
   const filesCount = useBuilderStore((s) => s.files.length);
   const previewError = useBuilderStore((s) => s.previewError);
   const fixWithAI = useBuilderStore((s) => s.fixWithAI);
+  const streaming = useBuilderStore((s) => s.streaming);
+  const streamingFiles = useBuilderStore((s) => s.streamingFiles);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingFiles.length]);
 
   const modelLabel = AI_MODEL_LABELS[model] || model;
   const isEdit = filesCount > 0;
