@@ -1,4 +1,4 @@
-import { AI_PROVIDERS } from '@/features/ai/aiTypes';
+import { AI_PROVIDERS, type AIProviderId } from '@/features/ai/aiTypes';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Bot } from 'lucide-react';
 
@@ -7,12 +7,14 @@ interface Props {
   onChange: (model: string) => void;
 }
 
-export function ModelSelector({ value, onChange }: Props) {
-  const grouped = {
-    openai: AI_PROVIDERS.filter((p) => p.provider === 'openai'),
-    google: AI_PROVIDERS.filter((p) => p.provider === 'google'),
-  };
+const GROUPS: { id: AIProviderId; label: string }[] = [
+  { id: 'openai', label: 'OpenAI' },
+  { id: 'google', label: 'Google' },
+  { id: 'claude', label: 'Anthropic' },
+  { id: 'grok', label: 'xAI' },
+];
 
+export function ModelSelector({ value, onChange }: Props) {
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger className="h-8 w-44 gap-1.5 text-xs">
@@ -20,18 +22,27 @@ export function ModelSelector({ value, onChange }: Props) {
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <div className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">OpenAI</div>
-        {grouped.openai.map((p) => (
-          <SelectItem key={p.id} value={p.id} className="text-xs">
-            {p.label}
-          </SelectItem>
-        ))}
-        <div className="mt-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Google</div>
-        {grouped.google.map((p) => (
-          <SelectItem key={p.id} value={p.id} className="text-xs">
-            {p.label}
-          </SelectItem>
-        ))}
+        {GROUPS.map((group) => {
+          const items = AI_PROVIDERS.filter((p) => p.provider === group.id);
+          if (items.length === 0) return null;
+          return (
+            <div key={group.id}>
+              <div className="mt-1 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {group.label}
+              </div>
+              {items.map((p) => (
+                <SelectItem
+                  key={p.id}
+                  value={p.id}
+                  disabled={!p.available}
+                  className="text-xs"
+                >
+                  {p.label}
+                </SelectItem>
+              ))}
+            </div>
+          );
+        })}
       </SelectContent>
     </Select>
   );
