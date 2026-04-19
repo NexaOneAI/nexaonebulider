@@ -235,6 +235,86 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
       var r = e.reason || {};
       __renderError(r.message || 'Unhandled promise rejection', r.stack || String(r));
     });
+
+    // ---- Visual Edits bridge ----
+    // Toggled on/off via postMessage({source:'lovable-builder', kind:'visual-edit-mode', enabled}).
+    // While active, hover paints an outline and click sends 'visual-edit-select'.
+    (function () {
+      var enabled = false;
+      var lastHover = null;
+      var styleEl = null;
+      function ensureStyle() {
+        if (styleEl) return;
+        styleEl = document.createElement('style');
+        styleEl.textContent =
+          '[data-lov-hover]{outline:2px dashed rgb(59,130,246)!important;outline-offset:2px!important;cursor:pointer!important;}' +
+          '[data-lov-selected]{outline:2px solid rgb(16,185,129)!important;outline-offset:2px!important;}';
+        document.head.appendChild(styleEl);
+      }
+      function getElData(el) {
+        var loc = el.getAttribute('data-loc');
+        var rect = el.getBoundingClientRect();
+        var children = Array.from(el.childNodes);
+        var hasElementChildren = children.some(function (c) { return c.nodeType === 1; });
+        return {
+          uid: loc || (el.tagName + ':' + rect.left + ':' + rect.top),
+          tag: el.tagName.toLowerCase(),
+          text: (el.textContent || '').slice(0, 500),
+          isTextLeaf: !hasElementChildren,
+          className: el.getAttribute('class') || '',
+          location: loc || null,
+          rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+        };
+      }
+      function clearHover() {
+        if (lastHover && lastHover.removeAttribute) {
+          lastHover.removeAttribute('data-lov-hover');
+        }
+        lastHover = null;
+      }
+      function onMove(e) {
+        if (!enabled) return;
+        var el = e.target;
+        if (!el || el === lastHover) return;
+        clearHover();
+        if (el.nodeType === 1 && el.tagName !== 'HTML' && el.tagName !== 'BODY') {
+          el.setAttribute('data-lov-hover', '');
+          lastHover = el;
+          __report('visual-edit-hover', getElData(el));
+        }
+      }
+      function onClick(e) {
+        if (!enabled) return;
+        e.preventDefault();
+        e.stopPropagation();
+        var el = e.target;
+        if (!el || el.nodeType !== 1) return;
+        // remove previous selected marker
+        var prev = document.querySelectorAll('[data-lov-selected]');
+        prev.forEach(function (p) { p.removeAttribute('data-lov-selected'); });
+        el.setAttribute('data-lov-selected', '');
+        __report('visual-edit-select', getElData(el));
+      }
+      function setEnabled(v) {
+        enabled = !!v;
+        if (enabled) {
+          ensureStyle();
+          document.body.style.cursor = 'crosshair';
+        } else {
+          clearHover();
+          document.body.style.cursor = '';
+          var prev = document.querySelectorAll('[data-lov-selected]');
+          prev.forEach(function (p) { p.removeAttribute('data-lov-selected'); });
+        }
+      }
+      window.addEventListener('mouseover', onMove, true);
+      window.addEventListener('click', onClick, true);
+      window.addEventListener('message', function (e) {
+        var d = e.data || {};
+        if (d.source !== 'lovable-builder') return;
+        if (d.kind === 'visual-edit-mode') setEnabled(d.enabled);
+      });
+    })();
   <\/script>
   <script type="module">
     const MODULES = ${modulesJson};
