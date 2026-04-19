@@ -159,9 +159,52 @@ serve(async (req) => {
         currentFiles.map((f: any) => ({ path: f.path, content: f.content })),
       );
 
+      // Image intent detection — if the user asks for an image, generate it
+      // first via /image-gen and inject the resulting public URL as extra
+      // context so the model can reference it inside its SEARCH/REPLACE blocks.
+      let generatedImage: { url: string; alt: string; placement: string } | null = null;
+      try {
+        const intent = await classifyImageIntent(prompt, LOVABLE_API_KEY);
+        if (intent.needs_image && intent.description) {
+          const authHeader = req.headers.get("Authorization") || "";
+          const apikey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+          const supaUrl = Deno.env.get("SUPABASE_URL")!;
+          const imgResp = await fetch(`${supaUrl}/functions/v1/image-gen`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: authHeader,
+              apikey,
+            },
+            body: JSON.stringify({
+              prompt: intent.description,
+              alt: intent.alt,
+              projectId,
+            }),
+          });
+          if (imgResp.ok) {
+            const imgData = await imgResp.json();
+            generatedImage = {
+              url: imgData.url,
+              alt: imgData.alt || intent.alt || intent.description,
+              placement: intent.placement_hint || "inline",
+            };
+          } else {
+            console.warn("image-gen failed in chat-edit:", imgResp.status, await imgResp.text());
+          }
+        }
+      } catch (e) {
+        console.warn("image intent flow failed:", e);
+      }
+
+      const imageContext = generatedImage
+        ? `An image has been generated for this request and uploaded to public storage.\nUse it directly via an <img> tag (or as a CSS background-image url) — do NOT try to import it.\n\nURL: ${generatedImage.url}\nALT: ${generatedImage.alt}\nPLACEMENT HINT: ${generatedImage.placement}\n\nGuidelines:\n- Insert the <img> in the most relevant existing component (or create one if needed).\n- Always include alt="${generatedImage.alt.replace(/"/g, "'")}".\n- Use Tailwind classes that match the project's design tokens (rounded-lg, shadow-elegant, w-full, object-cover, etc).\n- For hero/background placements consider object-cover with a fixed aspect ratio.`
+        : "";
+
       const messages = [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "system", content: projectContext },
+        ...(imageContext ? [{ role: "system", content: imageContext }] : []),
         {
           role: "user",
           content: `Current app files:\n\n${filesContext}\n\nReturn ONLY SEARCH/REPLACE blocks for what changes.`,
