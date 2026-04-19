@@ -30,9 +30,13 @@ export interface PreviewNetworkEntry {
 
 export type PreviewEvent = PreviewLogEntry | PreviewNetworkEntry;
 
+export type PushPreviewEvent =
+  | (Omit<PreviewLogEntry, 'id' | 'at'> & { at?: number })
+  | (Omit<PreviewNetworkEntry, 'id' | 'at'> & { at?: number });
+
 interface State {
   events: PreviewEvent[];
-  push: (e: Omit<PreviewEvent, 'id' | 'at'> & { at?: number }) => void;
+  push: (e: PushPreviewEvent) => void;
   clear: () => void;
   consoleCount: () => { log: number; warn: number; error: number };
   networkCount: () => { ok: number; failed: number };
