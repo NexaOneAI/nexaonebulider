@@ -178,7 +178,7 @@ export async function runStreamEdit({
         m.id === assistantMsgId
           ? {
               ...m,
-              content: `✏️ ${summary} — ${done.applied} bloques en ${done.changed_paths.length} archivos · ${done.credits_used} créditos · ${done.tier}${kbSaved}${failTxt}`,
+              content: `✏️ ${summary} — ${done.applied} bloques en ${done.changed_paths.length} archivos · ${done.credits_used} créditos · ${done.tier}${kbSaved}${failTxt}${imgTxt}`,
             }
           : m,
       ),
