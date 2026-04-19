@@ -4,7 +4,8 @@ import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
 import { VisualEditPopover } from './VisualEditPopover';
 import { VisualEditsActionBar } from './VisualEditsActionBar';
-import { Monitor, Code2, Eye, Terminal, MousePointerClick } from 'lucide-react';
+import { PreviewFrame } from './PreviewFrame';
+import { Monitor, Code2, Eye, Terminal, MousePointerClick, Frame } from 'lucide-react';
 import { VIEW_WIDTHS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -12,9 +13,17 @@ import { usePreviewLogsStore } from '@/features/builder/previewLogsStore';
 import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
 import type { SelectedElement } from '@/features/visualEdits/types';
+import {
+  getPreviewFrame,
+  setPreviewFrame,
+  subscribePreviewFrame,
+  PREVIEW_FRAMES,
+  type PreviewFrame as PreviewFrameKind,
+} from '@/features/builder/previewFrame';
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
+  const projectId = useBuilderStore((s) => s.projectId);
   const highlightLine = useBuilderStore((s) => s.highlightLine);
   const showCode = useBuilderStore((s) => s.showCode);
   const setShowCode = useBuilderStore((s) => s.setShowCode);
@@ -26,6 +35,21 @@ export function PreviewPanel() {
   const pushPreviewError = usePreviewErrorsStore((s) => s.push);
   const clearPreviewErrors = usePreviewErrorsStore((s) => s.clear);
   const [devOpen, setDevOpen] = useState(false);
+  const [frame, setFrame] = useState<PreviewFrameKind>(() => getPreviewFrame(projectId));
+  const [frameMenu, setFrameMenu] = useState(false);
+
+  // Re-read frame when project changes or external listener fires
+  useEffect(() => {
+    setFrame(getPreviewFrame(projectId));
+    return subscribePreviewFrame(() => setFrame(getPreviewFrame(projectId)));
+  }, [projectId]);
+
+  const handleSelectFrame = (f: PreviewFrameKind) => {
+    if (!projectId) return;
+    setPreviewFrame(projectId, f);
+    setFrame(f);
+    setFrameMenu(false);
+  };
 
   const visualEnabled = useVisualEditsStore((s) => s.enabled);
   const setVisualEnabled = useVisualEditsStore((s) => s.setEnabled);
@@ -235,7 +259,41 @@ export function PreviewPanel() {
               {selectedFile.path}
             </span>
           )}
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            {previewCode && !showingCode && (
+              <div className="relative">
+                <Button
+                  variant={frame !== 'none' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setFrameMenu((v) => !v)}
+                  title="Marco de dispositivo del preview"
+                >
+                  <Frame className="mr-1 h-3 w-3" />
+                  {PREVIEW_FRAMES.find((f) => f.id === frame)?.label || 'Marco'}
+                </Button>
+                {frameMenu && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setFrameMenu(false)} />
+                    <div className="absolute right-0 top-8 z-20 w-40 overflow-hidden rounded-md border border-border bg-popover shadow-elevated">
+                      {PREVIEW_FRAMES.map((f) => (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => handleSelectFrame(f.id)}
+                          className={`flex w-full items-center justify-between px-3 py-1.5 text-xs transition-colors hover:bg-muted/60 ${
+                            frame === f.id ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
+                          }`}
+                        >
+                          <span>{f.label}</span>
+                          {frame === f.id && <span className="text-[10px]">●</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
             <Button
               variant={devOpen ? 'default' : 'ghost'}
               size="sm"
@@ -258,23 +316,27 @@ export function PreviewPanel() {
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="flex min-h-0 flex-1 justify-center overflow-auto p-4">
             <div
-              className="flex h-full min-h-[600px] w-full flex-col overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated transition-all"
-              style={{ maxWidth: VIEW_WIDTHS[viewMode] }}
+              className="flex h-full min-h-[600px] w-full flex-col overflow-hidden transition-all"
+              style={{ maxWidth: frame === 'none' ? VIEW_WIDTHS[viewMode] : undefined }}
             >
               {showingCode && selectedFile ? (
-                <CodeEditor file={selectedFile} highlightLine={highlightLine ?? undefined} />
+                <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated">
+                  <CodeEditor file={selectedFile} highlightLine={highlightLine ?? undefined} />
+                </div>
               ) : previewCode ? (
-                <iframe
-                  ref={iframeRef}
-                  key={previewCode.length}
-                  srcDoc={previewCode}
-                  className="h-full w-full flex-1"
-                  sandbox="allow-scripts allow-same-origin"
-                  title="Live Preview"
-                  style={{ border: 'none', background: 'white', display: 'block' }}
-                />
+                <PreviewFrame frame={frame}>
+                  <iframe
+                    ref={iframeRef}
+                    key={previewCode.length}
+                    srcDoc={previewCode}
+                    className="h-full w-full flex-1"
+                    sandbox="allow-scripts allow-same-origin"
+                    title="Live Preview"
+                    style={{ border: 'none', background: 'white', display: 'block' }}
+                  />
+                </PreviewFrame>
               ) : (
-                <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+                <div className="flex h-full items-center justify-center rounded-lg border border-border/50 bg-card text-sm text-muted-foreground shadow-elevated">
                   Selecciona un archivo o genera la preview
                 </div>
               )}

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Send, Zap, AlertTriangle, Loader2 } from 'lucide-react';
+import { Send, Zap, AlertTriangle, Loader2, Image as ImageIcon } from 'lucide-react';
 import { estimateCost, type CostEstimate } from '@/features/credits/estimateService';
 import { useBuilderStore } from '@/features/builder/builderStore';
+import { ImageGenDialog } from './ImageGenDialog';
 
 interface Props {
   onSend: (prompt: string) => void;
@@ -13,7 +14,9 @@ export function PromptInput({ onSend, disabled }: Props) {
   const [value, setValue] = useState('');
   const [estimate, setEstimate] = useState<CostEstimate | null>(null);
   const [estimating, setEstimating] = useState(false);
+  const [imageOpen, setImageOpen] = useState(false);
   const filesCount = useBuilderStore((s) => s.files.length);
+  const projectId = useBuilderStore((s) => s.projectId);
   const debounceRef = useRef<number | null>(null);
 
   const mode: 'create' | 'edit' = filesCount > 0 ? 'edit' : 'create';
@@ -102,6 +105,17 @@ export function PromptInput({ onSend, disabled }: Props) {
           disabled={disabled}
         />
         <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          disabled={disabled || !projectId}
+          onClick={() => setImageOpen(true)}
+          title="Generar imagen (4 cr) sin pasar por el detector de intent"
+        >
+          <ImageIcon className="h-4 w-4" />
+        </Button>
+        <Button
           type="submit"
           size="icon"
           className="h-9 w-9 shrink-0 bg-gradient-primary hover:opacity-90"
@@ -111,6 +125,13 @@ export function PromptInput({ onSend, disabled }: Props) {
           <Send className="h-4 w-4" />
         </Button>
       </form>
+      {projectId && (
+        <ImageGenDialog
+          open={imageOpen}
+          onClose={() => setImageOpen(false)}
+          projectId={projectId}
+        />
+      )}
     </div>
   );
 }
