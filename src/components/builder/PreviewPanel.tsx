@@ -15,6 +15,7 @@ import type { SelectedElement } from '@/features/visualEdits/types';
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
+  const highlightLine = useBuilderStore((s) => s.highlightLine);
   const showCode = useBuilderStore((s) => s.showCode);
   const setShowCode = useBuilderStore((s) => s.setShowCode);
   const setSelectedFile = useBuilderStore((s) => s.setSelectedFile);
@@ -261,7 +262,7 @@ export function PreviewPanel() {
               style={{ maxWidth: VIEW_WIDTHS[viewMode] }}
             >
               {showingCode && selectedFile ? (
-                <CodeEditor file={selectedFile} />
+                <CodeEditor file={selectedFile} highlightLine={highlightLine ?? undefined} />
               ) : previewCode ? (
                 <iframe
                   ref={iframeRef}
