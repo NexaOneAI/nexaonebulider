@@ -101,13 +101,23 @@ export function ChatPanel() {
         <span className="text-sm font-medium">Chat IA</span>
         <button
           type="button"
+          onClick={startNewConversation}
+          disabled={!projectId || loading || messages.length === 0}
+          title="Iniciar nueva conversación: la IA dejará de usar el historial previo como contexto. Los archivos no se ven afectados."
+          className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+        >
+          <MessageSquarePlus className="h-2.5 w-2.5" />
+          Nueva
+        </button>
+        <button
+          type="button"
           onClick={toggleStrategy}
           title={
             strategy === 'progressive'
               ? 'Modo A: bloques aplicándose en vivo. Click para cambiar a modo simple.'
               : 'Modo B: solo tokens, cambios al final. Click para activar bloques en vivo.'
           }
-          className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
             strategy === 'progressive'
               ? 'bg-primary/15 text-primary hover:bg-primary/25'
               : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
@@ -122,7 +132,22 @@ export function ChatPanel() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && (
+        {cutoff && hiddenCount > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+            <MessageSquarePlus className="h-3 w-3 text-primary" />
+            <span className="flex-1">
+              Nueva conversación · {hiddenCount} {hiddenCount === 1 ? 'mensaje oculto' : 'mensajes ocultos'} del contexto
+            </span>
+            <button
+              type="button"
+              onClick={restorePreviousConversation}
+              className="text-primary hover:underline"
+            >
+              restaurar
+            </button>
+          </div>
+        )}
+        {visibleMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20">
               <Bot className="h-7 w-7 text-primary/60" />
@@ -148,9 +173,9 @@ export function ChatPanel() {
             </div>
           </div>
         )}
-        {messages.map((msg, idx) => {
+        {visibleMessages.map((msg, idx) => {
           const isLastAssistant =
-            msg.role === 'assistant' && idx === messages.length - 1 && streaming;
+            msg.role === 'assistant' && idx === visibleMessages.length - 1 && streaming;
           const isEmpty = msg.role === 'assistant' && msg.content.length === 0;
           return (
             <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
