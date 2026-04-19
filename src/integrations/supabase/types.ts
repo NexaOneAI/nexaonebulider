@@ -164,6 +164,91 @@ export type Database = {
         }
         Relationships: []
       }
+      project_deployments: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          project_id: string
+          provider: Database["public"]["Enums"]["deployment_provider"]
+          site_id: string | null
+          status: Database["public"]["Enums"]["deployment_status"]
+          updated_at: string
+          url: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          project_id: string
+          provider?: Database["public"]["Enums"]["deployment_provider"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["deployment_status"]
+          updated_at?: string
+          url?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          project_id?: string
+          provider?: Database["public"]["Enums"]["deployment_provider"]
+          site_id?: string | null
+          status?: Database["public"]["Enums"]["deployment_status"]
+          updated_at?: string
+          url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_deployments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_knowledge: {
+        Row: {
+          content: string
+          created_at: string
+          enabled: boolean
+          id: string
+          project_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          project_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          project_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_knowledge_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_shares: {
         Row: {
           created_at: string
@@ -366,6 +451,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       credit_type: "debit" | "credit" | "refund"
+      deployment_provider: "netlify" | "vercel" | "custom"
+      deployment_status: "pending" | "building" | "live" | "failed"
       export_type: "zip" | "deploy"
       message_role: "user" | "assistant" | "system"
       payment_status: "pending" | "completed" | "failed" | "refunded"
@@ -500,6 +587,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       credit_type: ["debit", "credit", "refund"],
+      deployment_provider: ["netlify", "vercel", "custom"],
+      deployment_status: ["pending", "building", "live", "failed"],
       export_type: ["zip", "deploy"],
       message_role: ["user", "assistant", "system"],
       payment_status: ["pending", "completed", "failed", "refunded"],
