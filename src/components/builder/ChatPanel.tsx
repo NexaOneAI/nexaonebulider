@@ -2,9 +2,10 @@ import { useRef, useEffect, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
+import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity, X } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 import {
