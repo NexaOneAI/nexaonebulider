@@ -38,6 +38,8 @@ export interface ExtendedBuilderState extends BuilderState {
   streamingFiles: string[];
   /** During edit-stream: blocks already applied client-side (path → count) */
   streamingBlocks: Record<string, number>;
+  /** 1-indexed line to highlight & scroll to in the CodeEditor (search jump) */
+  highlightLine: number | null;
 }
 
 export interface BuilderActions {
@@ -47,6 +49,7 @@ export interface BuilderActions {
   setViewMode: (mode: 'desktop' | 'tablet' | 'mobile') => void;
   setSelectedFile: (file: GeneratedFile | null) => void;
   setShowCode: (show: boolean) => void;
+  setHighlightLine: (line: number | null) => void;
   toggleSidebar: () => void;
   toggleChat: () => void;
   sendPrompt: (prompt: string, tierOverride?: Tier) => Promise<void>;

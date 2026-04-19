@@ -38,6 +38,7 @@ const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   streamBuffer: '',
   streamingFiles: [],
   streamingBlocks: {},
+  highlightLine: null,
 };
 
 export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((set, get) => {
@@ -60,8 +61,9 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
     setModel: (model) => set({ model }),
     setTier: (tier) => set({ tier }),
     setViewMode: (mode) => set({ viewMode: mode }),
-    setSelectedFile: (file) => set({ selectedFile: file }),
+    setSelectedFile: (file) => set({ selectedFile: file, highlightLine: null }),
     setShowCode: (show) => set({ showCode: show }),
+    setHighlightLine: (line) => set({ highlightLine: line }),
     toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
     toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
 
