@@ -4,7 +4,8 @@ import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
 import { VisualEditPopover } from './VisualEditPopover';
 import { VisualEditsActionBar } from './VisualEditsActionBar';
-import { Monitor, Code2, Eye, Terminal, MousePointerClick } from 'lucide-react';
+import { PreviewFrame } from './PreviewFrame';
+import { Monitor, Code2, Eye, Terminal, MousePointerClick, Frame } from 'lucide-react';
 import { VIEW_WIDTHS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -12,6 +13,13 @@ import { usePreviewLogsStore } from '@/features/builder/previewLogsStore';
 import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
 import type { SelectedElement } from '@/features/visualEdits/types';
+import {
+  getPreviewFrame,
+  setPreviewFrame,
+  subscribePreviewFrame,
+  PREVIEW_FRAMES,
+  type PreviewFrame as PreviewFrameKind,
+} from '@/features/builder/previewFrame';
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
