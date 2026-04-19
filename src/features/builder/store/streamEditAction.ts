@@ -137,6 +137,9 @@ export async function runStreamEdit({
             },
           }));
         },
+        onImage: (img) => {
+          updateAssistant(`🖼️ Imagen generada (${img.placement}). El modelo la insertará en el código…`);
+        },
         onError: (msg) => updateAssistant(`❌ ${msg}`),
       },
     );
