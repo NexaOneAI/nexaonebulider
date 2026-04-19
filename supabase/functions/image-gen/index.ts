@@ -12,7 +12,13 @@ import { requireUser, getAdminClient } from "../_shared/auth.ts";
  * Charges a fixed cost of 4 credits per generation. On any failure after the
  * deduction we refund the user (unless they're unlimited).
  *
- * Body: { prompt: string, projectId?: string, model?: string, alt?: string }
+ * Body: {
+ *   prompt: string,
+ *   projectId?: string,
+ *   model?: string,
+ *   alt?: string,
+ *   baseImageUrl?: string  // when present → edit mode (passes the URL as part of the message)
+ * }
  * Resp: { url, path, alt, model, credits_used, credits_remaining }
  */
 
@@ -53,10 +59,11 @@ serve(async (req) => {
   if (!LOVABLE_API_KEY) return jsonResponse({ error: "LOVABLE_API_KEY no configurada" }, 500);
 
   try {
-    const { prompt, projectId, model, alt } = await req.json();
+    const { prompt, projectId, model, alt, baseImageUrl } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return jsonResponse({ error: "El prompt es requerido" }, 400);
     }
+    const isEdit = typeof baseImageUrl === "string" && baseImageUrl.length > 0;
 
     const { user, error: authError } = await requireUser(req);
     if (authError || !user) return jsonResponse({ error: authError }, 401);
@@ -114,7 +121,17 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: aiModel,
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            {
+              role: "user",
+              content: isEdit
+                ? [
+                    { type: "text", text: prompt },
+                    { type: "image_url", image_url: { url: baseImageUrl } },
+                  ]
+                : prompt,
+            },
+          ],
           modalities: ["image", "text"],
         }),
       });

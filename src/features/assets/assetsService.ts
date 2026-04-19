@@ -55,11 +55,15 @@ export async function deleteProjectAsset(path: string): Promise<{ ok: boolean; e
 /**
  * Calls the image-gen edge function to create a new image bound to the
  * current project. Used by the explicit /image command UI.
+ *
+ * If `baseImageUrl` is provided, the gateway is called in *edit* mode
+ * (gemini reads the source image and applies the prompt).
  */
 export async function generateProjectImage(input: {
   prompt: string;
   projectId: string;
   alt?: string;
+  baseImageUrl?: string;
 }): Promise<{
   ok: boolean;
   url?: string;
@@ -74,6 +78,7 @@ export async function generateProjectImage(input: {
       prompt: input.prompt,
       projectId: input.projectId,
       alt: input.alt,
+      baseImageUrl: input.baseImageUrl,
     },
   });
   if (error) return { ok: false, error: error.message || 'Error generando imagen' };

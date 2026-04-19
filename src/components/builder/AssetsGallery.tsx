@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ImageIcon, Copy, Trash2, RefreshCw, X, ExternalLink, Loader2 } from 'lucide-react';
+import { ImageIcon, Copy, Trash2, RefreshCw, X, ExternalLink, Loader2, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
@@ -7,6 +7,7 @@ import {
   deleteProjectAsset,
   type ProjectAsset,
 } from '@/features/assets/assetsService';
+import { EditAssetDialog } from './EditAssetDialog';
 
 interface Props {
   open: boolean;
@@ -37,6 +38,7 @@ export function AssetsGallery({ open, onClose, projectId }: Props) {
   const [assets, setAssets] = useState<ProjectAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ProjectAsset | null>(null);
 
   const load = async () => {
     if (!projectId) return;
@@ -156,6 +158,14 @@ export function AssetsGallery({ open, onClose, projectId }: Props) {
                         <Copy className="h-2.5 w-2.5" />
                         URL
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditing(asset)}
+                        className="flex items-center justify-center rounded bg-primary/10 px-1.5 py-1 text-primary transition-colors hover:bg-primary/20"
+                        title="Editar imagen con IA (4 créditos)"
+                      >
+                        <Wand2 className="h-2.5 w-2.5" />
+                      </button>
                       <a
                         href={asset.publicUrl}
                         target="_blank"
@@ -186,6 +196,13 @@ export function AssetsGallery({ open, onClose, projectId }: Props) {
           )}
         </div>
       </div>
+      <EditAssetDialog
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        asset={editing}
+        projectId={projectId}
+        onCreated={load}
+      />
     </div>
   );
 }
