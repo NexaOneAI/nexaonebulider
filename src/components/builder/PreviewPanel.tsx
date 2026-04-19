@@ -152,6 +152,7 @@ export function PreviewPanel() {
           className: String(d.className || ''),
           location: d.location || null,
           rect: d.rect || { x: 0, y: 0, width: 0, height: 0 },
+          attributes: d.attributes || {},
         } as SelectedElement;
         setSelected(sel);
       }
