@@ -89,6 +89,7 @@ serve(async (req) => {
   const model = String(body.model ?? "google/gemini-3-flash-preview");
   const projectId = body.projectId ? String(body.projectId) : null;
   const userTier = body.userTier as Tier | undefined;
+  const historyAfter = typeof body.historyAfter === "string" ? body.historyAfter : null;
   const currentFiles: Array<{ path: string; content: string; language: string }> =
     Array.isArray(body.currentFiles) ? body.currentFiles : [];
 
@@ -115,15 +116,19 @@ serve(async (req) => {
     );
   }
 
-  // Recent conversation context
+  // Recent conversation context — last 10 messages, optionally filtered by
+  // a per-project cutoff sent by the client when the user opens a new
+  // conversation in the UI.
   let history: Array<{ role: string; content: string }> = [];
   if (projectId) {
-    const { data: msgs } = await admin
+    let q = admin
       .from("ai_messages")
       .select("role, content")
       .eq("project_id", projectId)
       .order("created_at", { ascending: false })
-      .limit(6);
+      .limit(10);
+    if (historyAfter) q = q.gt("created_at", historyAfter);
+    const { data: msgs } = await q;
     history = (msgs || []).reverse().map((m: any) => ({
       role: m.role === "assistant" ? "assistant" : "user",
       content: m.content,

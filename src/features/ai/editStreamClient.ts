@@ -41,6 +41,8 @@ export interface EditStreamInput {
   projectId?: string;
   userTier?: string;
   currentFiles: GeneratedFile[];
+  /** ISO timestamp filter — server only loads ai_messages strictly after it. */
+  historyAfter?: string | null;
 }
 
 const URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-edit-stream`;

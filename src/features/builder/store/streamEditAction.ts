@@ -10,6 +10,7 @@ import { applyBlock } from '@/features/builder/searchReplaceClient';
 import { generatePreviewHtml } from '@/features/builder/preview';
 import { useAuthStore } from '@/features/auth/authStore';
 import { getStreamEditStrategy } from '@/features/builder/streamPrefs';
+import { getChatCutoff } from '@/features/builder/chatCutoff';
 import type { ExtendedBuilderState } from '@/features/builder/builderTypes';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import type { Tier } from '@/features/ai/providers/types';
@@ -73,6 +74,7 @@ export async function runStreamEdit({
         projectId,
         userTier,
         currentFiles: baselineFiles,
+        historyAfter: getChatCutoff(projectId),
       },
       {
         onToken: () => {

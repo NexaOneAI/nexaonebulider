@@ -41,6 +41,7 @@ class LovableProvider implements AIProviderAdapter {
         currentFiles: filesArray,
         projectId: opts.projectId,
         userTier: opts.userTier,
+        historyAfter: opts.historyAfter ?? null,
       },
     });
     if (error) throw new Error(error.message || 'Error en chat-edit');

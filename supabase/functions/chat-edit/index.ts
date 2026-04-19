@@ -95,7 +95,7 @@ serve(async (req) => {
   if (!LOVABLE_API_KEY) return jsonResponse({ error: "LOVABLE_API_KEY no configurada" }, 500);
 
   try {
-    const { prompt, model, projectId, currentFiles, userTier } = await req.json();
+    const { prompt, model, projectId, currentFiles, userTier, historyAfter } = await req.json();
 
     if (!prompt || typeof prompt !== "string")
       return jsonResponse({ error: "El prompt es requerido" }, 400);
@@ -127,15 +127,21 @@ serve(async (req) => {
     const aiModel = model || "google/gemini-3-flash-preview";
 
     try {
-      // Recent conversation context.
+      // Recent conversation context — capped at 10 most recent messages and
+      // optionally filtered by a user-defined cutoff (when the user clicked
+      // "Nueva conversación" in the UI).
       let history: Array<{ role: string; content: string }> = [];
       if (projectId) {
-        const { data: msgs } = await admin
+        let q = admin
           .from("ai_messages")
           .select("role, content")
           .eq("project_id", projectId)
           .order("created_at", { ascending: false })
-          .limit(6);
+          .limit(10);
+        if (typeof historyAfter === "string" && historyAfter) {
+          q = q.gt("created_at", historyAfter);
+        }
+        const { data: msgs } = await q;
         history = (msgs || []).reverse().map((m) => ({
           role: m.role === "assistant" ? "assistant" : "user",
           content: m.content,

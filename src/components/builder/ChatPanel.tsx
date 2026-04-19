@@ -1,11 +1,13 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity, X } from 'lucide-react';
+import {
+  Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity, X, MessageSquarePlus,
+} from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
 import {
@@ -14,6 +16,12 @@ import {
   subscribeStreamEditStrategy,
   type StreamEditStrategy,
 } from '@/features/builder/streamPrefs';
+import {
+  getChatCutoff,
+  setChatCutoff,
+  clearChatCutoff,
+  subscribeChatCutoff,
+} from '@/features/builder/chatCutoff';
 
 const TIER_LABELS: Record<Tier, { label: string; cost: number }> = {
   simple_task: { label: 'Tarea simple', cost: CREDIT_COSTS.simple_task },
@@ -25,6 +33,7 @@ const TIER_LABELS: Record<Tier, { label: string; cost: number }> = {
 
 export function ChatPanel() {
   const { messages, loading, model, sendPrompt } = useBuilder();
+  const projectId = useBuilderStore((s) => s.projectId);
   const creditsRemaining = useBuilderStore((s) => s.creditsRemaining);
   const tier = useBuilderStore((s) => s.tier);
   const setTier = useBuilderStore((s) => s.setTier);
@@ -38,12 +47,24 @@ export function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
   const [strategy, setStrategy] = useState<StreamEditStrategy>(() => getStreamEditStrategy());
+  const [cutoff, setCutoffState] = useState<string | null>(() => getChatCutoff(projectId));
 
   useEffect(() => subscribeStreamEditStrategy(setStrategy), []);
+  useEffect(() => {
+    setCutoffState(getChatCutoff(projectId));
+    return subscribeChatCutoff(() => setCutoffState(getChatCutoff(projectId)));
+  }, [projectId]);
+
+  const visibleMessages = useMemo(() => {
+    if (!cutoff) return messages;
+    return messages.filter((m) => (m.created_at || '') > cutoff);
+  }, [messages, cutoff]);
+
+  const hiddenCount = messages.length - visibleMessages.length;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, streamingFiles.length]);
+  }, [visibleMessages, streamingFiles.length]);
 
   const modelLabel = AI_MODEL_LABELS[model] || model;
   const isEdit = filesCount > 0;
@@ -59,11 +80,35 @@ export function ChatPanel() {
     setStrategy(next);
   };
 
+  const startNewConversation = () => {
+    if (!projectId) return;
+    const ok = window.confirm(
+      'Iniciar nueva conversación: la IA dejará de usar los mensajes anteriores como contexto. Los archivos del proyecto y el historial de versiones no se ven afectados. ¿Continuar?',
+    );
+    if (!ok) return;
+    setChatCutoff(projectId);
+  };
+
+  const restorePreviousConversation = () => {
+    if (!projectId) return;
+    clearChatCutoff(projectId);
+  };
+
   return (
     <div className="flex w-80 flex-col border-l border-border/50 bg-sidebar">
       <div className="flex items-center gap-2 border-b border-border/50 px-4 py-3">
         <Sparkles className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">Chat IA</span>
+        <button
+          type="button"
+          onClick={startNewConversation}
+          disabled={!projectId || loading || messages.length === 0}
+          title="Iniciar nueva conversación: la IA dejará de usar el historial previo como contexto. Los archivos no se ven afectados."
+          className="ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-muted-foreground"
+        >
+          <MessageSquarePlus className="h-2.5 w-2.5" />
+          Nueva
+        </button>
         <button
           type="button"
           onClick={toggleStrategy}
@@ -72,7 +117,7 @@ export function ChatPanel() {
               ? 'Modo A: bloques aplicándose en vivo. Click para cambiar a modo simple.'
               : 'Modo B: solo tokens, cambios al final. Click para activar bloques en vivo.'
           }
-          className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+          className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
             strategy === 'progressive'
               ? 'bg-primary/15 text-primary hover:bg-primary/25'
               : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
@@ -87,7 +132,22 @@ export function ChatPanel() {
       </div>
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && (
+        {cutoff && hiddenCount > 0 && (
+          <div className="flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1.5 text-[10px] text-muted-foreground">
+            <MessageSquarePlus className="h-3 w-3 text-primary" />
+            <span className="flex-1">
+              Nueva conversación · {hiddenCount} {hiddenCount === 1 ? 'mensaje oculto' : 'mensajes ocultos'} del contexto
+            </span>
+            <button
+              type="button"
+              onClick={restorePreviousConversation}
+              className="text-primary hover:underline"
+            >
+              restaurar
+            </button>
+          </div>
+        )}
+        {visibleMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20">
               <Bot className="h-7 w-7 text-primary/60" />
@@ -113,9 +173,9 @@ export function ChatPanel() {
             </div>
           </div>
         )}
-        {messages.map((msg, idx) => {
+        {visibleMessages.map((msg, idx) => {
           const isLastAssistant =
-            msg.role === 'assistant' && idx === messages.length - 1 && streaming;
+            msg.role === 'assistant' && idx === visibleMessages.length - 1 && streaming;
           const isEmpty = msg.role === 'assistant' && msg.content.length === 0;
           return (
             <div key={msg.id} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : ''}`}>
