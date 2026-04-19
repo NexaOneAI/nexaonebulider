@@ -1,6 +1,7 @@
 import { transform } from 'sucrase';
 import type { GeneratedFile } from '../projects/projectTypes';
 import { SHADCN_STUBS } from './shadcnStubs';
+import { annotateJsxWithDataLoc } from './jsxAnnotator';
 
 /**
  * Lovable-grade live preview:
@@ -51,11 +52,15 @@ export function generatePreviewHtml(
     .map((f) => f.content)
     .join('\n');
 
-  // Build a virtual module map: path (normalised) → transpiled code
+  // Build a virtual module map: path (normalised) → transpiled code.
+  // For JSX/TSX files we first inject `data-loc` on every opening tag so
+  // the in-iframe Visual Edits bridge can resolve a click to source.
   const moduleMap = new Map<string, string>();
   for (const f of sourceFiles) {
     const normalised = normalisePath(f.path);
-    moduleMap.set(normalised, transpileSafe(f.content, f.path));
+    const isJsx = f.path.endsWith('.tsx') || f.path.endsWith('.jsx');
+    const annotated = isJsx ? annotateJsxWithDataLoc(f.content, f.path) : f.content;
+    moduleMap.set(normalised, transpileSafe(annotated, f.path));
   }
 
   // Inject shadcn stubs for any "@/components/ui/*" import used by the code
