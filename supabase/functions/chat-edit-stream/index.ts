@@ -28,6 +28,8 @@ import {
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
 import { createLovableEditStream } from "../_shared/providers/lovable-edit-stream.ts";
 import { sse, makeSafeController } from "../_shared/providers/_sse-utils.ts";
+import { buildProjectContext } from "../_shared/projectContext.ts";
+import { classifyImageIntent } from "../_shared/imageIntent.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
 
