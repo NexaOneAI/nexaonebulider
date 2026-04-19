@@ -196,6 +196,13 @@ export function AssetsGallery({ open, onClose, projectId }: Props) {
           )}
         </div>
       </div>
+      <EditAssetDialog
+        open={!!editing}
+        onClose={() => setEditing(null)}
+        asset={editing}
+        projectId={projectId}
+        onCreated={load}
+      />
     </div>
   );
 }
