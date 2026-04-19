@@ -208,6 +208,12 @@ serve(async (req) => {
       const decoder = new TextDecoder();
       let textBuf = "";
 
+      // Surface generated image immediately so the UI can show it before
+      // the model finishes emitting blocks.
+      if (generatedImage) {
+        safe.enqueue(sse("image", generatedImage));
+      }
+
       try {
         while (true) {
           const { done, value } = await reader.read();
