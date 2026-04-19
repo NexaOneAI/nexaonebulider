@@ -256,6 +256,10 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
         var rect = el.getBoundingClientRect();
         var children = Array.from(el.childNodes);
         var hasElementChildren = children.some(function (c) { return c.nodeType === 1; });
+        var attrs = {};
+        ['src','href','placeholder','alt','title'].forEach(function (k) {
+          if (el.hasAttribute && el.hasAttribute(k)) attrs[k] = el.getAttribute(k);
+        });
         return {
           uid: loc || (el.tagName + ':' + rect.left + ':' + rect.top),
           tag: el.tagName.toLowerCase(),
@@ -264,6 +268,7 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
           className: el.getAttribute('class') || '',
           location: loc || null,
           rect: { x: rect.left, y: rect.top, width: rect.width, height: rect.height },
+          attributes: attrs,
         };
       }
       function clearHover() {
@@ -271,6 +276,16 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
           lastHover.removeAttribute('data-lov-hover');
         }
         lastHover = null;
+      }
+      function selectEl(el) {
+        if (!el || el.nodeType !== 1) return;
+        var prev = document.querySelectorAll('[data-lov-selected]');
+        prev.forEach(function (p) { p.removeAttribute('data-lov-selected'); });
+        el.setAttribute('data-lov-selected', '');
+        __report('visual-edit-select', getElData(el));
+      }
+      function getCurrentSelected() {
+        return document.querySelector('[data-lov-selected]');
       }
       function onMove(e) {
         if (!enabled) return;
@@ -287,13 +302,7 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
         if (!enabled) return;
         e.preventDefault();
         e.stopPropagation();
-        var el = e.target;
-        if (!el || el.nodeType !== 1) return;
-        // remove previous selected marker
-        var prev = document.querySelectorAll('[data-lov-selected]');
-        prev.forEach(function (p) { p.removeAttribute('data-lov-selected'); });
-        el.setAttribute('data-lov-selected', '');
-        __report('visual-edit-select', getElData(el));
+        selectEl(e.target);
       }
       function setEnabled(v) {
         enabled = !!v;
@@ -313,6 +322,16 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
         var d = e.data || {};
         if (d.source !== 'lovable-builder') return;
         if (d.kind === 'visual-edit-mode') setEnabled(d.enabled);
+        else if (d.kind === 'visual-edit-select-parent') {
+          var cur = getCurrentSelected();
+          var parent = cur && cur.parentElement;
+          if (parent && parent.tagName !== 'HTML' && parent.tagName !== 'BODY') {
+            selectEl(parent);
+          }
+        } else if (d.kind === 'visual-edit-deselect') {
+          var prev = document.querySelectorAll('[data-lov-selected]');
+          prev.forEach(function (p) { p.removeAttribute('data-lov-selected'); });
+        }
       });
     })();
   <\/script>

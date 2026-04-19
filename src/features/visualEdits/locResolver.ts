@@ -9,7 +9,7 @@
  *     map. Brittle for duplicates; only used when data-loc is missing.
  */
 import type { GeneratedFile } from '@/features/projects/projectTypes';
-import type { ElementLocation, SelectedElement } from './types';
+import type { AttrName, ElementLocation } from './types';
 
 export interface SourceEdit {
   /** File to modify */
@@ -100,6 +100,55 @@ export function rewriteTextAt(
   return { path: file.path, search: block, replace: updated };
 }
 
+/**
+ * Replace (or insert) a string-literal attribute value on the element at
+ * `loc.line`. Only handles double/single quoted literals — JSX expressions
+ * like `src={img}` are intentionally skipped to avoid breaking bindings.
+ */
+export function rewriteAttributeAt(
+  files: GeneratedFile[],
+  loc: ElementLocation,
+  attr: AttrName,
+  nextValue: string,
+): SourceEdit | null {
+  const file = files.find((f) => f.path === loc.path);
+  if (!file) return null;
+  const lines = file.content.split('\n');
+  if (loc.line < 1 || loc.line > lines.length) return null;
+
+  const windowStart = Math.max(0, loc.line - 1);
+  const windowEnd = Math.min(lines.length, loc.line + 4);
+  const original = lines.slice(windowStart, windowEnd).join('\n');
+
+  // Match `attr="..."` or `attr='...'` (literal only, skip {expr}).
+  const attrRe = new RegExp(`${attr}\\s*=\\s*(["'])((?:(?!\\1).)*?)\\1`);
+  if (attrRe.test(original)) {
+    const updated = original.replace(
+      attrRe,
+      (_m, q) => `${attr}=${q}${escapeAttrValue(nextValue, q)}${q}`,
+    );
+    if (updated === original) return null;
+    return { path: file.path, search: original, replace: updated };
+  }
+
+  // Refuse to insert/replace when the existing attribute is a JSX expression,
+  // because we can't safely rewrite a binding like `src={url}` to a literal.
+  const exprRe = new RegExp(`${attr}\\s*=\\s*\\{`);
+  if (exprRe.test(original)) return null;
+
+  // Attribute missing: inject after tag name on the head line.
+  const headLine = lines[loc.line - 1];
+  const tagRe = /<([A-Za-z][A-Za-z0-9]*)/;
+  const tm = tagRe.exec(headLine);
+  if (!tm) return null;
+  const insertAt = tm.index + tm[0].length;
+  const newHeadLine =
+    headLine.slice(0, insertAt) +
+    ` ${attr}="${escapeAttrValue(nextValue, '"')}"` +
+    headLine.slice(insertAt);
+  return { path: file.path, search: headLine, replace: newHeadLine };
+}
+
 function rewriteTextHeuristic(
   file: GeneratedFile,
   oldText: string,
@@ -126,4 +175,10 @@ function rewriteTextHeuristic(
 function escapeForJsxText(s: string): string {
   // Curly braces and the angle brackets must be escaped in JSX text.
   return s.replace(/[{}<>]/g, (c) => `{'${c}'}`);
+}
+
+function escapeAttrValue(value: string, quote: string): string {
+  // Escape only the matching quote — keeps URLs and most strings intact.
+  if (quote === '"') return value.replace(/"/g, '&quot;');
+  return value.replace(/'/g, '&#39;');
 }

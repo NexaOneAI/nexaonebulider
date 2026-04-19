@@ -28,6 +28,7 @@ export function PreviewPanel() {
   const setSelected = useVisualEditsStore((s) => s.setSelected);
   const selected = useVisualEditsStore((s) => s.selected);
   const pendingCount = useVisualEditsStore((s) => s.pending.length);
+  const commitVisual = useVisualEditsStore((s) => s.commit);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeRect, setIframeRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
@@ -68,6 +69,51 @@ export function PreviewPanel() {
     };
   }, [previewCode, visualEnabled]);
 
+  // Keyboard shortcuts (only active when Visual Edits is on)
+  useEffect(() => {
+    if (!visualEnabled) return;
+    const onKey = (e: KeyboardEvent) => {
+      // Ignore typing in inputs/textareas/contenteditable
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const isTyping =
+        tag === 'INPUT' || tag === 'TEXTAREA' || (t && (t as HTMLElement).isContentEditable);
+
+      if (e.key === 'Escape' && !isTyping) {
+        if (selected) {
+          setSelected(null);
+          try {
+            iframeRef.current?.contentWindow?.postMessage(
+              { source: 'lovable-builder', kind: 'visual-edit-deselect' },
+              '*',
+            );
+          } catch {}
+        } else {
+          setVisualEnabled(false);
+        }
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's' && pendingCount > 0) {
+        e.preventDefault();
+        commitVisual();
+        return;
+      }
+
+      if (e.key === 'ArrowUp' && (e.altKey || e.metaKey) && selected) {
+        e.preventDefault();
+        try {
+          iframeRef.current?.contentWindow?.postMessage(
+            { source: 'lovable-builder', kind: 'visual-edit-select-parent' },
+            '*',
+          );
+        } catch {}
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [visualEnabled, selected, pendingCount, setSelected, setVisualEnabled, commitVisual]);
+
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       const d = e.data;
@@ -106,6 +152,7 @@ export function PreviewPanel() {
           className: String(d.className || ''),
           location: d.location || null,
           rect: d.rect || { x: 0, y: 0, width: 0, height: 0 },
+          attributes: d.attributes || {},
         } as SelectedElement;
         setSelected(sel);
       }
