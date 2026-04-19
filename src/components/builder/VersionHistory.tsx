@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Clock, RotateCcw, X, Check } from 'lucide-react';
+import { Clock, RotateCcw, X, Check, GitBranch, FileText } from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ export function VersionHistory({ open, onClose }: Props) {
           <ul className="divide-y divide-border/30">
             {versions.map((v, idx) => (
               <li key={v.id} className="px-4 py-3 transition-colors hover:bg-muted/30">
-                <div className="mb-1 flex items-center gap-2">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
                   <span className="rounded bg-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-medium text-primary">
                     v{v.version_number}
                   </span>
@@ -87,6 +87,20 @@ export function VersionHistory({ open, onClose }: Props) {
                     <span className="flex items-center gap-0.5 rounded bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500">
                       <Check className="h-2.5 w-2.5" />
                       actual
+                    </span>
+                  )}
+                  {v.isDiff ? (
+                    <span
+                      className="flex items-center gap-0.5 rounded bg-accent/15 px-1.5 py-0.5 text-[10px] text-accent"
+                      title={`${v.editsMeta?.applied ?? 0} bloques aplicados${v.editsMeta?.bytes_saved ? ` · ${(v.editsMeta.bytes_saved / 1024).toFixed(1)} KB ahorrados` : ''}`}
+                    >
+                      <GitBranch className="h-2.5 w-2.5" />
+                      diff · {v.editsMeta?.applied ?? 0}b
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                      <FileText className="h-2.5 w-2.5" />
+                      full
                     </span>
                   )}
                   <span className="ml-auto text-[10px] text-muted-foreground">
@@ -103,6 +117,9 @@ export function VersionHistory({ open, onClose }: Props) {
                   <span className="text-[10px] text-muted-foreground">
                     {AI_MODEL_LABELS[v.model_used] || v.model_used} ·{' '}
                     {v.generated_files.length} archivos
+                    {v.isDiff && v.editsMeta?.bytes_saved
+                      ? ` · 💾 ${(v.editsMeta.bytes_saved / 1024).toFixed(1)} KB`
+                      : ''}
                   </span>
                   <Button
                     variant="ghost"
