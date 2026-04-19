@@ -121,7 +121,17 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           model: aiModel,
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            {
+              role: "user",
+              content: isEdit
+                ? [
+                    { type: "text", text: prompt },
+                    { type: "image_url", image_url: { url: baseImageUrl } },
+                  ]
+                : prompt,
+            },
+          ],
           modalities: ["image", "text"],
         }),
       });
