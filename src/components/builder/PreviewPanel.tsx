@@ -28,6 +28,7 @@ export function PreviewPanel() {
   const setSelected = useVisualEditsStore((s) => s.setSelected);
   const selected = useVisualEditsStore((s) => s.selected);
   const pendingCount = useVisualEditsStore((s) => s.pending.length);
+  const commitVisual = useVisualEditsStore((s) => s.commit);
 
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [iframeRect, setIframeRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
