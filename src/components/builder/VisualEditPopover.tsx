@@ -1,8 +1,8 @@
 /**
  * Floating popover positioned next to the currently selected element
- * inside the preview iframe. Tabs: Texto · Color · Fuente · Spacing.
+ * inside the preview iframe. Tabs: Texto · Color · Fuente · Spacing · Attrs.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,7 @@ import {
   TW_FONT_FAMILIES,
   spacingClasses,
 } from '@/features/visualEdits/tailwindMap';
+import type { AttrName } from '@/features/visualEdits/types';
 import { X } from 'lucide-react';
 
 interface Props {
@@ -26,16 +27,36 @@ interface Props {
 const TEXT_COLOR_SWATCH = TW_TEXT_COLORS.slice(5); // skip semantic, show hues
 const BG_COLOR_SWATCH = TW_BG_COLORS.slice(8);
 
+// Which attributes make sense per tag.
+const ATTRS_BY_TAG: Record<string, AttrName[]> = {
+  img: ['src', 'alt', 'title'],
+  a: ['href', 'title'],
+  input: ['placeholder', 'title'],
+  textarea: ['placeholder', 'title'],
+  button: ['title'],
+  iframe: ['src', 'title'],
+  source: ['src'],
+  video: ['src'],
+  audio: ['src'],
+};
+
+function attrsForTag(tag: string): AttrName[] {
+  return ATTRS_BY_TAG[tag] || [];
+}
+
 export function VisualEditPopover({ iframeRect }: Props) {
   const selected = useVisualEditsStore((s) => s.selected);
   const setSelected = useVisualEditsStore((s) => s.setSelected);
   const applyChange = useVisualEditsStore((s) => s.applyChange);
   const [textValue, setTextValue] = useState('');
+  const [attrDraft, setAttrDraft] = useState<Record<string, string>>({});
 
-  // Sync local text state when selection changes
-  useMemo(() => {
-    if (selected?.isTextLeaf) setTextValue(selected.text);
-  }, [selected?.uid, selected?.isTextLeaf, selected?.text]);
+  // Sync local state when selection changes
+  useEffect(() => {
+    if (!selected) return;
+    if (selected.isTextLeaf) setTextValue(selected.text);
+    setAttrDraft({ ...(selected.attributes || {}) });
+  }, [selected?.uid, selected?.isTextLeaf, selected?.text, selected?.attributes]);
 
   if (!selected) return null;
 
@@ -47,15 +68,13 @@ export function VisualEditPopover({ iframeRect }: Props) {
   const left = Math.min(Math.max(8, elX), maxX);
   const top = Math.min(Math.max(8, elY), maxY);
 
-  const tone = (cls: string) => {
-    const m = cls.match(/-(\w+)-(\d+)$/);
-    if (!m) return cls;
-    return cls;
-  };
+  const eligibleAttrs = attrsForTag(selected.tag);
+  const hasAttrTab = eligibleAttrs.length > 0;
+  const defaultTab = selected.isTextLeaf ? 'text' : hasAttrTab ? 'attrs' : 'color';
 
   return (
     <div
-      className="fixed z-50 w-[320px] rounded-lg border border-border bg-card p-3 shadow-elevated"
+      className="fixed z-50 w-[340px] rounded-lg border border-border bg-card p-3 shadow-elevated"
       style={{ left, top }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -74,19 +93,23 @@ export function VisualEditPopover({ iframeRect }: Props) {
           type="button"
           onClick={() => setSelected(null)}
           className="rounded p-0.5 text-muted-foreground hover:bg-muted"
+          title="Cerrar (Esc)"
         >
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
 
-      <Tabs defaultValue={selected.isTextLeaf ? 'text' : 'color'}>
-        <TabsList className="grid h-8 w-full grid-cols-4 text-[11px]">
-          <TabsTrigger value="text" className="h-6 text-[11px]" disabled={!selected.isTextLeaf}>
+      <Tabs defaultValue={defaultTab} key={selected.uid}>
+        <TabsList className="grid h-8 w-full grid-cols-5 text-[10px]">
+          <TabsTrigger value="text" className="h-6 text-[10px]" disabled={!selected.isTextLeaf}>
             Texto
           </TabsTrigger>
-          <TabsTrigger value="color" className="h-6 text-[11px]">Color</TabsTrigger>
-          <TabsTrigger value="font" className="h-6 text-[11px]">Fuente</TabsTrigger>
-          <TabsTrigger value="space" className="h-6 text-[11px]">Spacing</TabsTrigger>
+          <TabsTrigger value="color" className="h-6 text-[10px]">Color</TabsTrigger>
+          <TabsTrigger value="font" className="h-6 text-[10px]">Fuente</TabsTrigger>
+          <TabsTrigger value="space" className="h-6 text-[10px]">Spacing</TabsTrigger>
+          <TabsTrigger value="attrs" className="h-6 text-[10px]" disabled={!hasAttrTab}>
+            Attrs
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="text" className="mt-2 space-y-2">
@@ -178,6 +201,57 @@ export function VisualEditPopover({ iframeRect }: Props) {
               onPick={(t) => applyChange({ kind: 'addClass', classes: [t] }, `→ ${t}`)}
             />
           </Section>
+        </TabsContent>
+
+        <TabsContent value="attrs" className="mt-2 space-y-2">
+          {eligibleAttrs.length === 0 && (
+            <p className="text-[10px] text-muted-foreground">
+              Este tag no expone atributos editables.
+            </p>
+          )}
+          {eligibleAttrs.map((name) => {
+            const current = (selected.attributes || {})[name] || '';
+            const draft = attrDraft[name] ?? current;
+            const dirty = draft !== current;
+            return (
+              <div key={name} className="space-y-1">
+                <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {name}
+                </Label>
+                <div className="flex gap-1">
+                  <Input
+                    value={draft}
+                    onChange={(e) =>
+                      setAttrDraft((d) => ({ ...d, [name]: e.target.value }))
+                    }
+                    className="h-7 text-xs"
+                    placeholder={current || `valor de ${name}`}
+                  />
+                  <Button
+                    size="sm"
+                    className="h-7 px-2 text-[10px]"
+                    disabled={!dirty}
+                    onClick={() => {
+                      const ok = applyChange(
+                        { kind: 'attr', name, value: draft },
+                        `${name}: "${draft.slice(0, 24)}"`,
+                      );
+                      if (!ok) {
+                        // Most likely the attribute is bound to a JSX expression
+                        // and we refused to overwrite it.
+                        console.warn('[visual-edits] attr edit rejected (likely bound to expression)');
+                      }
+                    }}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+          <p className="text-[10px] text-muted-foreground">
+            Si el atributo está enlazado a una variable (<code>{'{src}'}</code>), no se puede editar aquí.
+          </p>
         </TabsContent>
       </Tabs>
 
