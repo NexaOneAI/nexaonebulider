@@ -8,6 +8,12 @@ export interface AIMessage {
   created_at: string;
 }
 
+export interface GeneratedImageInfo {
+  url: string;
+  alt: string;
+  placement: string;
+}
+
 export interface AIStructuredResponse {
   projectName: string;
   description: string;
@@ -15,6 +21,8 @@ export interface AIStructuredResponse {
   dependencies: Record<string, string>;
   pages: string[];
   components: string[];
+  /** When the backend auto-generated an image for this prompt. */
+  generated_image?: GeneratedImageInfo | null;
 }
 
 // ===== Strict client contract (used by aiClient.ts) =====

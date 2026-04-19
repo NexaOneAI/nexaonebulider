@@ -28,6 +28,8 @@ import {
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
 import { createLovableEditStream } from "../_shared/providers/lovable-edit-stream.ts";
 import { sse, makeSafeController } from "../_shared/providers/_sse-utils.ts";
+import { buildProjectContext } from "../_shared/projectContext.ts";
+import { classifyImageIntent } from "../_shared/imageIntent.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
 
@@ -139,6 +141,53 @@ serve(async (req) => {
     .map((f) => `### ${f.path}\n\`\`\`${f.language || "text"}\n${f.content}\n\`\`\``)
     .join("\n\n");
 
+  // Project-wide structured summary (routes, components, design tokens).
+  const projectContext = buildProjectContext(
+    currentFiles.map((f) => ({ path: f.path, content: f.content })),
+  );
+
+  // Image intent — generate ahead of streaming so the model can reference
+  // the URL in its SEARCH/REPLACE blocks. We tolerate any failure here:
+  // the rest of the edit pipeline runs regardless.
+  let generatedImage: { url: string; alt: string; placement: string } | null = null;
+  try {
+    const intent = await classifyImageIntent(prompt, LOVABLE_API_KEY);
+    if (intent.needs_image && intent.description) {
+      const authHeader = req.headers.get("Authorization") || "";
+      const apikey = req.headers.get("apikey") || Deno.env.get("SUPABASE_ANON_KEY") || "";
+      const supaUrl = Deno.env.get("SUPABASE_URL")!;
+      const imgResp = await fetch(`${supaUrl}/functions/v1/image-gen`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authHeader,
+          apikey,
+        },
+        body: JSON.stringify({
+          prompt: intent.description,
+          alt: intent.alt,
+          projectId,
+        }),
+      });
+      if (imgResp.ok) {
+        const imgData = await imgResp.json();
+        generatedImage = {
+          url: imgData.url,
+          alt: imgData.alt || intent.alt || intent.description,
+          placement: intent.placement_hint || "inline",
+        };
+      } else {
+        console.warn("image-gen failed in chat-edit-stream:", imgResp.status, await imgResp.text());
+      }
+    }
+  } catch (e) {
+    console.warn("image intent flow failed (stream):", e);
+  }
+
+  const imageContext = generatedImage
+    ? `An image has been generated for this request and uploaded to public storage.\nUse it directly via an <img> tag (or as a CSS background-image url) — do NOT try to import it.\n\nURL: ${generatedImage.url}\nALT: ${generatedImage.alt}\nPLACEMENT HINT: ${generatedImage.placement}\n\nGuidelines:\n- Insert the <img> in the most relevant existing component (or create one if needed).\n- Always include alt="${generatedImage.alt.replace(/"/g, "'")}".\n- Use Tailwind classes that match the project's design tokens (rounded-lg, shadow-elegant, w-full, object-cover, etc).\n- For hero/background placements consider object-cover with a fixed aspect ratio.`
+    : "";
+
   const inner = createLovableEditStream({
     prompt,
     model,
@@ -146,6 +195,7 @@ serve(async (req) => {
     systemPrompt: SYSTEM_PROMPT,
     filesContext,
     history,
+    extraSystem: [projectContext, ...(imageContext ? [imageContext] : [])],
   });
 
   // Wrap inner stream so we can append a final "done" event with persistence
@@ -157,6 +207,12 @@ serve(async (req) => {
       const reader = inner.stream.getReader();
       const decoder = new TextDecoder();
       let textBuf = "";
+
+      // Surface generated image immediately so the UI can show it before
+      // the model finishes emitting blocks.
+      if (generatedImage) {
+        safe.enqueue(sse("image", generatedImage));
+      }
 
       try {
         while (true) {
@@ -264,7 +320,7 @@ serve(async (req) => {
               role: "assistant",
               content: `${summary} · ${applyResult.applied} bloques aplicados en ${changedPaths.length} archivos · ${cost} créditos · ${tier}${
                 applyResult.failed.length ? ` · ⚠️ ${applyResult.failed.length} bloques fallaron` : ""
-              }`,
+              }${generatedImage ? ` · 🖼️ imagen generada` : ""}`,
               model,
             },
           ]);
@@ -282,6 +338,7 @@ serve(async (req) => {
             credits_used: cost,
             credits_remaining: creditCheck.isUnlimited ? -1 : creditCheck.balance,
             tier,
+            generated_image: generatedImage,
           }),
         );
         safe.close();

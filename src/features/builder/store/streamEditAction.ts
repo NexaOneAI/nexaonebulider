@@ -137,6 +137,9 @@ export async function runStreamEdit({
             },
           }));
         },
+        onImage: (img) => {
+          updateAssistant(`🖼️ Imagen generada (${img.placement}). El modelo la insertará en el código…`);
+        },
         onError: (msg) => updateAssistant(`❌ ${msg}`),
       },
     );
@@ -153,6 +156,7 @@ export async function runStreamEdit({
     const summary = done.summary || 'App actualizada';
     const kbSaved = done.bytes_saved > 0 ? ` · 💾 ~${(done.bytes_saved / 1024).toFixed(1)} KB ahorrados` : '';
     const failTxt = done.failed.length ? ` · ⚠️ ${done.failed.length} bloques fallaron` : '';
+    const imgTxt = done.generated_image ? ` · 🖼️ imagen generada` : '';
 
     store.setState((s) => ({
       files: done.files,
@@ -174,7 +178,7 @@ export async function runStreamEdit({
         m.id === assistantMsgId
           ? {
               ...m,
-              content: `✏️ ${summary} — ${done.applied} bloques en ${done.changed_paths.length} archivos · ${done.credits_used} créditos · ${done.tier}${kbSaved}${failTxt}`,
+              content: `✏️ ${summary} — ${done.applied} bloques en ${done.changed_paths.length} archivos · ${done.credits_used} créditos · ${done.tier}${kbSaved}${failTxt}${imgTxt}`,
             }
           : m,
       ),
