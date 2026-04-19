@@ -15,6 +15,7 @@ import { useAuthStore } from '@/features/auth/authStore';
 import { runStreamGenerate } from './store/streamGenerateAction';
 import { runStreamEdit } from './store/streamEditAction';
 import { usePreviewErrorsStore, buildFixPrompt } from './previewErrorsStore';
+import { getChatCutoff } from './chatCutoff';
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   projectName: 'Mi proyecto',
@@ -159,7 +160,11 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
       try {
         const response = isFirstGeneration
           ? await aiService.generateApp(prompt, model, { projectId, userTier })
-          : await aiService.editApp(prompt, model, files, { projectId, userTier });
+          : await aiService.editApp(prompt, model, files, {
+              projectId,
+              userTier,
+              historyAfter: getChatCutoff(projectId),
+            });
 
         const newFiles = response.files;
         const previewCode = generatePreviewHtml(

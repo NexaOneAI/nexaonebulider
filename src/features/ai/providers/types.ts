@@ -8,6 +8,8 @@ export interface GenerateOptions {
   userTier?: Tier;
   /** Explicit provider override; if omitted the backend infers from model prefix. */
   provider?: AiProvider;
+  /** ISO timestamp; only ai_messages strictly after this are sent as history. */
+  historyAfter?: string | null;
 }
 
 /**
