@@ -4,9 +4,15 @@ import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
-import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode } from 'lucide-react';
+import { Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity } from 'lucide-react';
 import { AI_MODEL_LABELS, CREDIT_COSTS } from '@/lib/constants';
 import type { Tier } from '@/features/ai/providers/types';
+import {
+  getStreamEditStrategy,
+  setStreamEditStrategy,
+  subscribeStreamEditStrategy,
+  type StreamEditStrategy,
+} from '@/features/builder/streamPrefs';
 
 const TIER_LABELS: Record<Tier, { label: string; cost: number }> = {
   simple_task: { label: 'Tarea simple', cost: CREDIT_COSTS.simple_task },
@@ -28,6 +34,9 @@ export function ChatPanel() {
   const streamingFiles = useBuilderStore((s) => s.streamingFiles);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
+  const [strategy, setStrategy] = useState<StreamEditStrategy>(() => getStreamEditStrategy());
+
+  useEffect(() => subscribeStreamEditStrategy(setStrategy), []);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -41,12 +50,35 @@ export function ChatPanel() {
     ? ['simple_edit', 'medium_module', 'complex_module']
     : ['simple_task', 'medium_module', 'complex_module', 'full_app'];
 
+  const toggleStrategy = () => {
+    const next: StreamEditStrategy = strategy === 'progressive' ? 'tokens-only' : 'progressive';
+    setStreamEditStrategy(next);
+    setStrategy(next);
+  };
+
   return (
     <div className="flex w-80 flex-col border-l border-border/50 bg-sidebar">
       <div className="flex items-center gap-2 border-b border-border/50 px-4 py-3">
         <Sparkles className="h-4 w-4 text-primary" />
         <span className="text-sm font-medium">Chat IA</span>
-        <span className="ml-auto rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
+        <button
+          type="button"
+          onClick={toggleStrategy}
+          title={
+            strategy === 'progressive'
+              ? 'Modo A: bloques aplicándose en vivo. Click para cambiar a modo simple.'
+              : 'Modo B: solo tokens, cambios al final. Click para activar bloques en vivo.'
+          }
+          className={`ml-auto inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] transition-colors ${
+            strategy === 'progressive'
+              ? 'bg-primary/15 text-primary hover:bg-primary/25'
+              : 'bg-secondary text-muted-foreground hover:bg-secondary/80'
+          }`}
+        >
+          <Activity className="h-2.5 w-2.5" />
+          {strategy === 'progressive' ? 'Live diffs' : 'Solo tokens'}
+        </button>
+        <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] text-muted-foreground">
           {modelLabel}
         </span>
       </div>
