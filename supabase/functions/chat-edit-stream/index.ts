@@ -338,6 +338,7 @@ serve(async (req) => {
             credits_used: cost,
             credits_remaining: creditCheck.isUnlimited ? -1 : creditCheck.balance,
             tier,
+            generated_image: generatedImage,
           }),
         );
         safe.close();
