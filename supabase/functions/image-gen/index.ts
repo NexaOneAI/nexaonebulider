@@ -59,10 +59,11 @@ serve(async (req) => {
   if (!LOVABLE_API_KEY) return jsonResponse({ error: "LOVABLE_API_KEY no configurada" }, 500);
 
   try {
-    const { prompt, projectId, model, alt } = await req.json();
+    const { prompt, projectId, model, alt, baseImageUrl } = await req.json();
     if (!prompt || typeof prompt !== "string") {
       return jsonResponse({ error: "El prompt es requerido" }, 400);
     }
+    const isEdit = typeof baseImageUrl === "string" && baseImageUrl.length > 0;
 
     const { user, error: authError } = await requireUser(req);
     if (authError || !user) return jsonResponse({ error: authError }, 401);
