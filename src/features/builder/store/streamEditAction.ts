@@ -156,6 +156,7 @@ export async function runStreamEdit({
     const summary = done.summary || 'App actualizada';
     const kbSaved = done.bytes_saved > 0 ? ` · 💾 ~${(done.bytes_saved / 1024).toFixed(1)} KB ahorrados` : '';
     const failTxt = done.failed.length ? ` · ⚠️ ${done.failed.length} bloques fallaron` : '';
+    const imgTxt = done.generated_image ? ` · 🖼️ imagen generada` : '';
 
     store.setState((s) => ({
       files: done.files,
