@@ -241,21 +241,67 @@ export function ChatPanel() {
         </div>
       )}
 
-      {/* Preview runtime error → Fix with AI */}
-      {previewError && !loading && (
-        <div className="border-t border-destructive/30 bg-destructive/5 px-3 py-2">
-          <div className="mb-1.5 flex items-start gap-1.5">
-            <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0 text-destructive" />
-            <p className="line-clamp-2 text-[11px] text-destructive/90">{previewError.message}</p>
+      {/* Preview runtime errors → Fix with AI (lista con dedupe) */}
+      {previewErrors.length > 0 && !loading && (
+        <div className="max-h-48 overflow-y-auto border-t border-destructive/30 bg-destructive/5 px-3 py-2">
+          <div className="mb-1.5 flex items-center gap-1.5">
+            <AlertTriangle className="h-3 w-3 text-destructive" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-destructive">
+              {previewErrors.length} {previewErrors.length === 1 ? 'error' : 'errores'} en preview
+            </span>
+            {previewErrors.length > 1 && (
+              <button
+                type="button"
+                onClick={clearPreviewErrors}
+                className="ml-auto text-[10px] text-destructive/70 hover:text-destructive"
+              >
+                limpiar
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={() => fixWithAI()}
-            className="flex w-full items-center justify-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/20"
-          >
-            <Wand2 className="h-3 w-3" />
-            Arreglar con IA (3 créditos)
-          </button>
+          <div className="space-y-1.5">
+            {previewErrors.slice(-3).map((err) => (
+              <div
+                key={err.id}
+                className="rounded-md border border-destructive/20 bg-background/40 p-2"
+              >
+                <div className="mb-1.5 flex items-start gap-1.5">
+                  <p className="line-clamp-2 flex-1 text-[11px] text-destructive/90">
+                    {err.message}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => removePreviewError(err.id)}
+                    className="shrink-0 text-destructive/50 hover:text-destructive"
+                    title="Descartar"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+                {(err.inferredFile || err.occurrences.length > 1) && (
+                  <div className="mb-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                    {err.inferredFile && (
+                      <span className="font-mono">
+                        📄 {err.inferredFile}
+                        {err.inferredLine ? `:${err.inferredLine}` : ''}
+                      </span>
+                    )}
+                    {err.occurrences.length > 1 && (
+                      <span>×{err.occurrences.length}</span>
+                    )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => fixWithAI(err.id)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-md bg-destructive/10 px-2 py-1.5 text-[11px] font-medium text-destructive transition-colors hover:bg-destructive/20"
+                >
+                  <Wand2 className="h-3 w-3" />
+                  {err.inferredFile ? 'Arreglar con IA (con contexto)' : 'Arreglar con IA'} (3 cr)
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
