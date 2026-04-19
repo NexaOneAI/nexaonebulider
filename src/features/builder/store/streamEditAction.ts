@@ -9,6 +9,7 @@ import { editAppStream } from '@/features/ai/editStreamClient';
 import { applyBlock } from '@/features/builder/searchReplaceClient';
 import { generatePreviewHtml } from '@/features/builder/preview';
 import { useAuthStore } from '@/features/auth/authStore';
+import { getStreamEditStrategy } from '@/features/builder/streamPrefs';
 import type { ExtendedBuilderState } from '@/features/builder/builderTypes';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import type { Tier } from '@/features/ai/providers/types';
@@ -46,6 +47,8 @@ export async function runStreamEdit({
 }: RunStreamEditArgs): Promise<{ ok: boolean }> {
   const { model, projectId, files } = store.getState();
   const baselineFiles: GeneratedFile[] = files.map((f) => ({ ...f }));
+  const strategy = getStreamEditStrategy();
+  const progressive = strategy === 'progressive';
 
   const updateAssistant = (text: string) => {
     store.setState((s) => ({
@@ -73,11 +76,27 @@ export async function runStreamEdit({
       },
       {
         onToken: () => {
-          updateAssistant(
-            `✏️ Editando… ${blocksApplied} bloques aplicados${blocksFailed ? ` · ⚠️ ${blocksFailed} fallaron` : ''}`,
-          );
+          if (progressive) {
+            updateAssistant(
+              `✏️ Editando… ${blocksApplied} bloques aplicados${blocksFailed ? ` · ⚠️ ${blocksFailed} fallaron` : ''}`,
+            );
+          } else {
+            updateAssistant(`✏️ Editando… recibiendo cambios del modelo`);
+          }
         },
         onBlock: (block) => {
+          // Tokens-only mode (B): track block paths for the side panel but
+          // don't mutate files/preview until the server emits `done`.
+          if (!progressive) {
+            store.setState((s) => ({
+              streamingBlocks: {
+                ...s.streamingBlocks,
+                [block.path]: (s.streamingBlocks[block.path] || 0) + 1,
+              },
+            }));
+            return;
+          }
+
           if (block.action === 'delete') {
             working.delete(block.path);
             blocksApplied += 1;
