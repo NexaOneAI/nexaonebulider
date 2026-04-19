@@ -262,7 +262,7 @@ describe('runStreamEdit — strategy B (tokens-only)', () => {
         credits_remaining: 97,
         tier: 'medium',
       };
-      cb.onDone(done);
+      cb.onDone?.(done);
       return done;
     });
 
