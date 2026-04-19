@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/features/auth/authStore';
 import { runStreamGenerate } from './store/streamGenerateAction';
 import { runStreamEdit } from './store/streamEditAction';
+import { usePreviewErrorsStore, buildFixPrompt } from './previewErrorsStore';
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   projectName: 'Mi proyecto',
