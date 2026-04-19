@@ -321,11 +321,36 @@ serve(async (req) => {
             role: "assistant",
             content: `${result.summary || "App actualizada"} · ${applyResult.applied} bloques aplicados en ${changedPaths.length} archivos · ${cost} créditos · ${tier}${
               applyResult.failed.length ? ` · ⚠️ ${applyResult.failed.length} bloques fallaron` : ""
-            }`,
+            }${generatedImage ? ` · 🖼️ imagen generada` : ""}`,
             model: aiModel,
           },
         ]);
       }
+
+      return jsonResponse({
+        projectName,
+        description: result.description || "",
+        files: mergedFiles,
+        changed_paths: changedPaths,
+        summary: result.summary,
+        dependencies: {},
+        pages: [],
+        components: [],
+        generated_image: generatedImage,
+        _meta: {
+          credits_used: cost,
+          credits_remaining: creditCheck.isUnlimited ? -1 : creditCheck.balance,
+          model: aiModel,
+          tier,
+          mode: "edit",
+          strategy: "search_replace",
+          blocks_applied: applyResult.applied,
+          blocks_failed: applyResult.failed,
+          bytes_saved: applyResult.bytesSaved,
+          changed_count: changedPaths.length,
+          image_generated: !!generatedImage,
+        },
+      });
 
       return jsonResponse({
         projectName,
