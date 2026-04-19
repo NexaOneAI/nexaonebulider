@@ -38,8 +38,11 @@ export function PreviewPanel() {
 
   // Reset logs whenever a new preview is rendered
   useEffect(() => {
-    if (previewCode) clearLogs();
-  }, [previewCode, clearLogs]);
+    if (previewCode) {
+      clearLogs();
+      clearPreviewErrors();
+    }
+  }, [previewCode, clearLogs, clearPreviewErrors]);
 
   // Push visual-edit-mode to the iframe whenever it toggles or iframe reloads
   useEffect(() => {
