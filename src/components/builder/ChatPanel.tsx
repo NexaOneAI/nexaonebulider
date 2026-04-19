@@ -29,10 +29,12 @@ export function ChatPanel() {
   const tier = useBuilderStore((s) => s.tier);
   const setTier = useBuilderStore((s) => s.setTier);
   const filesCount = useBuilderStore((s) => s.files.length);
-  const previewError = useBuilderStore((s) => s.previewError);
   const fixWithAI = useBuilderStore((s) => s.fixWithAI);
   const streaming = useBuilderStore((s) => s.streaming);
   const streamingFiles = useBuilderStore((s) => s.streamingFiles);
+  const previewErrors = usePreviewErrorsStore((s) => s.errors);
+  const removePreviewError = usePreviewErrorsStore((s) => s.remove);
+  const clearPreviewErrors = usePreviewErrorsStore((s) => s.clear);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
   const [strategy, setStrategy] = useState<StreamEditStrategy>(() => getStreamEditStrategy());
