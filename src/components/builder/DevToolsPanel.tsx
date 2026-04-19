@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { Terminal, Activity, Trash2, X, Filter } from 'lucide-react';
+import { Terminal, Activity, Trash2, X, Filter, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreviewLogsStore, type PreviewEvent } from '@/features/builder/previewLogsStore';
+import { SandpackTerminal } from './SandpackTerminal';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'console' | 'network';
+type Tab = 'console' | 'network' | 'terminal';
 
 export function DevToolsPanel({ open, onClose }: Props) {
   const events = usePreviewLogsStore((s) => s.events);
@@ -43,12 +44,15 @@ export function DevToolsPanel({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  const filtered = (tab === 'console' ? consoleEvents : networkEvents).filter((e) => {
-    if (!filter) return true;
-    const f = filter.toLowerCase();
-    if (e.type === 'console') return e.message.toLowerCase().includes(f);
-    return `${e.method} ${e.url} ${e.status ?? ''}`.toLowerCase().includes(f);
-  });
+  const filtered =
+    tab === 'terminal'
+      ? []
+      : (tab === 'console' ? consoleEvents : networkEvents).filter((e) => {
+          if (!filter) return true;
+          const f = filter.toLowerCase();
+          if (e.type === 'console') return e.message.toLowerCase().includes(f);
+          return `${e.method} ${e.url} ${e.status ?? ''}`.toLowerCase().includes(f);
+        });
 
   return (
     <div className="flex h-64 flex-col border-t border-border/50 bg-card/80 backdrop-blur">
@@ -93,6 +97,19 @@ export function DevToolsPanel({ open, onClose }: Props) {
           )}
           <span className="text-[10px] text-muted-foreground">{counts.netOk + counts.netFail}</span>
         </button>
+        <button
+          onClick={() => setTab('terminal')}
+          className={cn(
+            'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
+            tab === 'terminal'
+              ? 'bg-primary/15 text-primary'
+              : 'text-muted-foreground hover:bg-muted/50',
+          )}
+          title="Logs de Sandpack (cuando esté activo)"
+        >
+          <Boxes className="h-3 w-3" />
+          Terminal
+        </button>
 
         <div className="ml-2 flex flex-1 items-center gap-1">
           <Filter className="h-3 w-3 text-muted-foreground" />
@@ -113,7 +130,9 @@ export function DevToolsPanel({ open, onClose }: Props) {
       </div>
 
       <div className="flex-1 overflow-auto font-mono text-[11px]">
-        {filtered.length === 0 ? (
+        {tab === 'terminal' ? (
+          <SandpackTerminal />
+        ) : filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {tab === 'console'
               ? 'Sin logs. Los console.log del preview aparecerán aquí.'

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
@@ -20,6 +20,16 @@ import {
   PREVIEW_FRAMES,
   type PreviewFrame as PreviewFrameKind,
 } from '@/features/builder/previewFrame';
+import {
+  getSandbox,
+  subscribeSandbox,
+  type SandboxKind,
+} from '@/features/builder/sandboxPrefs';
+
+// Lazy-load Sandpack (~150KB gzip) so the iframe path stays light.
+const SandpackPreview = lazy(() =>
+  import('./SandpackPreview').then((m) => ({ default: m.SandpackPreview })),
+);
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
@@ -37,11 +47,18 @@ export function PreviewPanel() {
   const [devOpen, setDevOpen] = useState(false);
   const [frame, setFrame] = useState<PreviewFrameKind>(() => getPreviewFrame(projectId));
   const [frameMenu, setFrameMenu] = useState(false);
+  const [sandbox, setSandbox] = useState<SandboxKind>(() => getSandbox(projectId));
 
   // Re-read frame when project changes or external listener fires
   useEffect(() => {
     setFrame(getPreviewFrame(projectId));
     return subscribePreviewFrame(() => setFrame(getPreviewFrame(projectId)));
+  }, [projectId]);
+
+  // Re-read sandbox kind on project change / external toggle
+  useEffect(() => {
+    setSandbox(getSandbox(projectId));
+    return subscribeSandbox(() => setSandbox(getSandbox(projectId)));
   }, [projectId]);
 
   const handleSelectFrame = (f: PreviewFrameKind) => {
@@ -323,6 +340,16 @@ export function PreviewPanel() {
                 <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-border/50 bg-card shadow-elevated">
                   <CodeEditor file={selectedFile} highlightLine={highlightLine ?? undefined} />
                 </div>
+              ) : sandbox === 'sandpack' && files.length > 0 ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center rounded-lg border border-border/50 bg-card text-sm text-muted-foreground shadow-elevated">
+                      Cargando Sandpack…
+                    </div>
+                  }
+                >
+                  <SandpackPreview files={files} projectName="Preview" showNavigator />
+                </Suspense>
               ) : previewCode ? (
                 <PreviewFrame frame={frame}>
                   <iframe
