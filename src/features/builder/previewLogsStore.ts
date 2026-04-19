@@ -42,7 +42,8 @@ interface State {
   networkCount: () => { ok: number; failed: number };
 }
 
-const MAX_EVENTS = 300;
+/** FIFO retention cap — drops oldest entries once exceeded. */
+const MAX_EVENTS = 200;
 
 let counter = 0;
 const nextId = () => `${Date.now()}-${++counter}`;

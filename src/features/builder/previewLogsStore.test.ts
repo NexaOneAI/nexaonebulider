@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { usePreviewLogsStore } from './previewLogsStore';
 
-const MAX = 300;
+const MAX = 200;
 
 describe('previewLogsStore', () => {
   beforeEach(() => {
