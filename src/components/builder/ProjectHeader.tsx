@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -11,6 +11,13 @@ import { exportProjectZip } from '@/features/builder/zipExport';
 import { useAuth } from '@/hooks/useAuth';
 import { ShareDialog } from '@/components/sharing/ShareDialog';
 import { AssetsGallery } from './AssetsGallery';
+import {
+  getSandbox,
+  setSandbox,
+  subscribeSandbox,
+  type SandboxKind,
+} from '@/features/builder/sandboxPrefs';
+import { useEffect } from 'react';
 
 interface Props {
   onToggleHistory?: () => void;
@@ -34,6 +41,27 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const projectId = useBuilderStore((s) => s.projectId);
   const [shareOpen, setShareOpen] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(false);
+  const [sandbox, setSandboxState] = useState<SandboxKind>(() => getSandbox(projectId));
+
+  useEffect(() => {
+    setSandboxState(getSandbox(projectId));
+    return subscribeSandbox(() => setSandboxState(getSandbox(projectId)));
+  }, [projectId]);
+
+  const toggleSandbox = () => {
+    if (!projectId) {
+      toast.info('Abre un proyecto primero');
+      return;
+    }
+    const next: SandboxKind = sandbox === 'iframe' ? 'sandpack' : 'iframe';
+    setSandbox(projectId, next);
+    setSandboxState(next);
+    toast.success(
+      next === 'sandpack'
+        ? 'Sandpack activado · HMR + URL bar + router'
+        : 'iframe rápido (Sucrase + esm.sh)',
+    );
+  };
 
   const handleExport = async () => {
     if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
@@ -124,6 +152,19 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
           title="Compartir link público"
         >
           <Share2 className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-8 w-8 ${sandbox === 'sandpack' ? 'text-primary' : ''}`}
+          onClick={toggleSandbox}
+          title={
+            sandbox === 'sandpack'
+              ? 'Sandbox: Sandpack (HMR + router). Click para volver a iframe rápido.'
+              : 'Sandbox: iframe rápido. Click para activar Sandpack (HMR + router).'
+          }
+        >
+          <Boxes className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}>
           <Rocket className="h-4 w-4" />
