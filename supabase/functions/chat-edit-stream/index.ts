@@ -320,7 +320,7 @@ serve(async (req) => {
               role: "assistant",
               content: `${summary} · ${applyResult.applied} bloques aplicados en ${changedPaths.length} archivos · ${cost} créditos · ${tier}${
                 applyResult.failed.length ? ` · ⚠️ ${applyResult.failed.length} bloques fallaron` : ""
-              }`,
+              }${generatedImage ? ` · 🖼️ imagen generada` : ""}`,
               model,
             },
           ]);
