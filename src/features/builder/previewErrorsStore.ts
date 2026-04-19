@@ -60,14 +60,20 @@ function inferFileFromStack(
   stack: string,
 ): { file: string | null; line: number | null } {
   const all = `${message}\n${stack}`;
-  // 1) Patrón explícito en mensaje: "src/foo/bar.tsx" o "@/foo"
-  const explicit = all.match(/(?:src\/|@\/)[\w/\-.]+\.(?:tsx?|jsx?|css)/);
-  if (explicit) {
-    const path = explicit[0].startsWith('@/')
-      ? `src/${explicit[0].slice(2)}`
-      : explicit[0];
+  // 1) Patrón con extensión (preferido — más específico)
+  const explicitExt = all.match(/(?:src\/|@\/)[\w/\-.]+\.(?:tsx?|jsx?|css)/);
+  if (explicitExt) {
+    const path = explicitExt[0].startsWith('@/')
+      ? `src/${explicitExt[0].slice(2)}`
+      : explicitExt[0];
     const lineMatch = all.match(new RegExp(`${path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:(\\d+)`));
     return { file: path, line: lineMatch ? parseInt(lineMatch[1], 10) : null };
+  }
+  // 2) Patrón sin extensión (típico en errores "Module not found: @/lib/foo")
+  const noExt = all.match(/(?:src\/|@\/)[\w/\-]+/);
+  if (noExt) {
+    const path = noExt[0].startsWith('@/') ? `src/${noExt[0].slice(2)}` : noExt[0];
+    return { file: path, line: null };
   }
   return { file: null, line: null };
 }
