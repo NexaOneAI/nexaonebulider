@@ -1,13 +1,15 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { exportProjectZip } from '@/features/builder/zipExport';
 import { useAuth } from '@/hooks/useAuth';
+import { ShareDialog } from '@/components/sharing/ShareDialog';
 
 interface Props {
   onToggleHistory?: () => void;
@@ -29,6 +31,8 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
     : profile?.credits ?? '--';
 
   const projectId = useBuilderStore((s) => s.projectId);
+  const [shareOpen, setShareOpen] = useState(false);
+
   const handleExport = async () => {
     if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
     const tid = toast.loading('Generando ZIP en el servidor...');
@@ -94,6 +98,19 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}>
           <Download className="h-4 w-4" />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            if (!projectId) { toast.info('Guarda el proyecto primero'); return; }
+            if (files.length === 0) { toast.info('Genera una app primero'); return; }
+            setShareOpen(true);
+          }}
+          title="Compartir link público"
+        >
+          <Share2 className="h-4 w-4" />
+        </Button>
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}>
           <Rocket className="h-4 w-4" />
         </Button>
@@ -101,6 +118,15 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
           <MessageSquare className="h-4 w-4" />
         </Button>
       </div>
+
+      {projectId && (
+        <ShareDialog
+          open={shareOpen}
+          onOpenChange={setShareOpen}
+          projectId={projectId}
+          projectName={projectName}
+        />
+      )}
     </div>
   );
 }
