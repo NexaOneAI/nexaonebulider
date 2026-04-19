@@ -1,12 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
-import { Monitor, Code2, Eye, Terminal } from 'lucide-react';
+import { VisualEditPopover } from './VisualEditPopover';
+import { VisualEditsActionBar } from './VisualEditsActionBar';
+import { Monitor, Code2, Eye, Terminal, MousePointerClick } from 'lucide-react';
 import { VIEW_WIDTHS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewLogsStore } from '@/features/builder/previewLogsStore';
+import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
+import type { SelectedElement } from '@/features/visualEdits/types';
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
@@ -19,10 +23,50 @@ export function PreviewPanel() {
   const events = usePreviewLogsStore((s) => s.events);
   const [devOpen, setDevOpen] = useState(false);
 
+  const visualEnabled = useVisualEditsStore((s) => s.enabled);
+  const setVisualEnabled = useVisualEditsStore((s) => s.setEnabled);
+  const setSelected = useVisualEditsStore((s) => s.setSelected);
+  const selected = useVisualEditsStore((s) => s.selected);
+  const pendingCount = useVisualEditsStore((s) => s.pending.length);
+
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [iframeRect, setIframeRect] = useState({ left: 0, top: 0, width: 0, height: 0 });
+
   // Reset logs whenever a new preview is rendered
   useEffect(() => {
     if (previewCode) clearLogs();
   }, [previewCode, clearLogs]);
+
+  // Push visual-edit-mode to the iframe whenever it toggles or iframe reloads
+  useEffect(() => {
+    const post = () => {
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
+          { source: 'lovable-builder', kind: 'visual-edit-mode', enabled: visualEnabled },
+          '*',
+        );
+      } catch {}
+    };
+    post();
+    // also re-post once after a short delay to catch cases where iframe is still loading
+    const t = window.setTimeout(post, 400);
+    return () => window.clearTimeout(t);
+  }, [visualEnabled, previewCode]);
+
+  // Track iframe rect for popover positioning (resize/scroll aware)
+  useEffect(() => {
+    const update = () => {
+      const r = iframeRef.current?.getBoundingClientRect();
+      if (r) setIframeRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+    };
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [previewCode, visualEnabled]);
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
@@ -53,11 +97,22 @@ export function PreviewPanel() {
           durationMs: typeof d.durationMs === 'number' ? d.durationMs : undefined,
           error: d.error,
         });
+      } else if (d.kind === 'visual-edit-select') {
+        const sel: SelectedElement = {
+          uid: String(d.uid || ''),
+          tag: String(d.tag || 'div'),
+          text: String(d.text || ''),
+          isTextLeaf: Boolean(d.isTextLeaf),
+          className: String(d.className || ''),
+          location: d.location || null,
+          rect: d.rect || { x: 0, y: 0, width: 0, height: 0 },
+        } as SelectedElement;
+        setSelected(sel);
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [setPreviewError, pushLog]);
+  }, [setPreviewError, pushLog, setSelected]);
 
   const hasContent = Boolean(previewCode) || files.length > 0;
   const showingCode = showCode && Boolean(selectedFile);
@@ -95,6 +150,22 @@ export function PreviewPanel() {
             <Code2 className="mr-1 h-3 w-3" />
             Código
           </Button>
+          <Button
+            variant={visualEnabled ? 'default' : 'ghost'}
+            size="sm"
+            className="h-7 text-xs"
+            disabled={!previewCode || showingCode}
+            onClick={() => setVisualEnabled(!visualEnabled)}
+            title="Edita textos, colores, fuente y spacing sin gastar créditos"
+          >
+            <MousePointerClick className="mr-1 h-3 w-3" />
+            Editar visual
+            {pendingCount > 0 && (
+              <span className="ml-1.5 rounded bg-primary-foreground/20 px-1 text-[10px]">
+                {pendingCount}
+              </span>
+            )}
+          </Button>
           {showingCode && selectedFile && (
             <span className="ml-2 font-mono text-xs text-muted-foreground">
               {selectedFile.path}
@@ -130,6 +201,7 @@ export function PreviewPanel() {
                 <CodeEditor file={selectedFile} />
               ) : previewCode ? (
                 <iframe
+                  ref={iframeRef}
                   key={previewCode.length}
                   srcDoc={previewCode}
                   className="h-full w-full flex-1"
@@ -144,7 +216,9 @@ export function PreviewPanel() {
               )}
             </div>
           </div>
+          <VisualEditsActionBar />
           <DevToolsPanel open={devOpen} onClose={() => setDevOpen(false)} />
+          {visualEnabled && selected && <VisualEditPopover iframeRect={iframeRect} />}
         </div>
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center text-center">
