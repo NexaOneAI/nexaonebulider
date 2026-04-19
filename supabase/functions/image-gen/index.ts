@@ -12,7 +12,13 @@ import { requireUser, getAdminClient } from "../_shared/auth.ts";
  * Charges a fixed cost of 4 credits per generation. On any failure after the
  * deduction we refund the user (unless they're unlimited).
  *
- * Body: { prompt: string, projectId?: string, model?: string, alt?: string }
+ * Body: {
+ *   prompt: string,
+ *   projectId?: string,
+ *   model?: string,
+ *   alt?: string,
+ *   baseImageUrl?: string  // when present → edit mode (passes the URL as part of the message)
+ * }
  * Resp: { url, path, alt, model, credits_used, credits_remaining }
  */
 
