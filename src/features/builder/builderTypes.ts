@@ -52,6 +52,6 @@ export interface BuilderActions {
   sendPrompt: (prompt: string, tierOverride?: Tier) => Promise<void>;
   loadVersion: (versionId: string) => Promise<void>;
   setPreviewError: (err: PreviewError | null) => void;
-  fixWithAI: () => Promise<void>;
+  fixWithAI: (errorId?: string) => Promise<void>;
   reset: (projectId: string) => void;
 }
