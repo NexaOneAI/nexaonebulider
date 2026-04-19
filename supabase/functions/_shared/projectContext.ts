@@ -79,8 +79,12 @@ export function extractDesignTokens(files: ProjectFile[]): string[] {
     for (const m of file.content.matchAll(CSS_TOKEN_REGEX)) {
       const key = m[1];
       const val = m[2].trim();
-      // Sólo color/gradient/shadow/radius (señales de design system)
-      if (!/(color|primary|secondary|accent|background|foreground|muted|border|gradient|shadow|radius)/i.test(key)) {
+      // Tokens del design system: nombres de color/superficie/efecto.
+      // Usamos anclaje al inicio para no matchear --random-non-color.
+      if (
+        !/^(primary|secondary|accent|background|foreground|muted|border|input|ring|card|popover|destructive|sidebar)(-|$)/i.test(key) &&
+        !/^(gradient|shadow|radius)(-|$)/i.test(key)
+      ) {
         continue;
       }
       const line = `--${key}: ${val}`;
