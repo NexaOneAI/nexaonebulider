@@ -129,13 +129,87 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
 <body>
   <div id="root"></div>
   <script>
-    // Forward runtime errors to the parent (Lovable builder) so it can
-    // offer "Fix with AI"
+    // Forward runtime errors + console + network to the parent (Lovable builder)
     function __report(kind, payload) {
       try {
         window.parent.postMessage({ source: 'lovable-preview', kind, ...payload }, '*');
       } catch (_) {}
     }
+
+    // ---- console.* interceptors ----
+    (function () {
+      var levels = ['log', 'info', 'warn', 'error', 'debug'];
+      function fmt(args) {
+        return Array.from(args).map(function (a) {
+          if (a == null) return String(a);
+          if (typeof a === 'string') return a;
+          if (a instanceof Error) return a.stack || a.message;
+          try { return JSON.stringify(a, null, 2).slice(0, 2000); } catch (_) { return String(a); }
+        }).join(' ');
+      }
+      levels.forEach(function (lvl) {
+        var orig = console[lvl];
+        console[lvl] = function () {
+          try { __report('preview-console', { level: lvl, message: fmt(arguments) }); } catch (_) {}
+          if (orig) orig.apply(console, arguments);
+        };
+      });
+    })();
+
+    // ---- fetch interceptor ----
+    (function () {
+      if (typeof window.fetch !== 'function') return;
+      var origFetch = window.fetch.bind(window);
+      window.fetch = function (input, init) {
+        var url = typeof input === 'string' ? input : (input && input.url) || String(input);
+        var method = (init && init.method) || (input && input.method) || 'GET';
+        var t0 = performance.now();
+        return origFetch(input, init).then(function (resp) {
+          __report('preview-network', {
+            method: method.toUpperCase(),
+            url: url,
+            status: resp.status,
+            ok: resp.ok,
+            durationMs: Math.round(performance.now() - t0),
+          });
+          return resp;
+        }).catch(function (err) {
+          __report('preview-network', {
+            method: method.toUpperCase(),
+            url: url,
+            error: (err && err.message) || String(err),
+            durationMs: Math.round(performance.now() - t0),
+          });
+          throw err;
+        });
+      };
+    })();
+
+    // ---- XHR interceptor ----
+    (function () {
+      if (typeof window.XMLHttpRequest !== 'function') return;
+      var origOpen = XMLHttpRequest.prototype.open;
+      var origSend = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function (method, url) {
+        this.__lov = { method: String(method || 'GET').toUpperCase(), url: String(url) };
+        return origOpen.apply(this, arguments);
+      };
+      XMLHttpRequest.prototype.send = function () {
+        var meta = this.__lov || {};
+        var t0 = performance.now();
+        var self = this;
+        this.addEventListener('loadend', function () {
+          __report('preview-network', {
+            method: meta.method || 'GET',
+            url: meta.url || '',
+            status: self.status,
+            ok: self.status >= 200 && self.status < 400,
+            durationMs: Math.round(performance.now() - t0),
+          });
+        });
+        return origSend.apply(this, arguments);
+      };
+    })();
     function __renderError(msg, stack) {
       var root = document.getElementById('root');
       if (root) {
