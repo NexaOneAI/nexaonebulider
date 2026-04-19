@@ -9,6 +9,7 @@ import { VIEW_WIDTHS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewLogsStore } from '@/features/builder/previewLogsStore';
+import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
 import type { SelectedElement } from '@/features/visualEdits/types';
 
@@ -21,6 +22,8 @@ export function PreviewPanel() {
   const pushLog = usePreviewLogsStore((s) => s.push);
   const clearLogs = usePreviewLogsStore((s) => s.clear);
   const events = usePreviewLogsStore((s) => s.events);
+  const pushPreviewError = usePreviewErrorsStore((s) => s.push);
+  const clearPreviewErrors = usePreviewErrorsStore((s) => s.clear);
   const [devOpen, setDevOpen] = useState(false);
 
   const visualEnabled = useVisualEditsStore((s) => s.enabled);
@@ -35,8 +38,11 @@ export function PreviewPanel() {
 
   // Reset logs whenever a new preview is rendered
   useEffect(() => {
-    if (previewCode) clearLogs();
-  }, [previewCode, clearLogs]);
+    if (previewCode) {
+      clearLogs();
+      clearPreviewErrors();
+    }
+  }, [previewCode, clearLogs, clearPreviewErrors]);
 
   // Push visual-edit-mode to the iframe whenever it toggles or iframe reloads
   useEffect(() => {
@@ -119,20 +125,30 @@ export function PreviewPanel() {
       const d = e.data;
       if (!d || d.source !== 'lovable-preview') return;
       if (d.kind === 'preview-error') {
-        setPreviewError({ message: d.message || '', stack: d.stack || '', at: Date.now() });
+        const message = String(d.message || '');
+        const stack = String(d.stack || '');
+        setPreviewError({ message, stack, at: Date.now() });
+        pushPreviewError({ message, stack });
         pushLog({
           type: 'console',
           level: 'error',
-          message: `${d.message}\n${d.stack || ''}`.trim(),
+          message: `${message}\n${stack}`.trim(),
         });
       } else if (d.kind === 'preview-ready') {
         setPreviewError(null);
       } else if (d.kind === 'preview-console') {
-        pushLog({
-          type: 'console',
-          level: (d.level || 'log') as any,
-          message: String(d.message ?? ''),
-        });
+        const level = (d.level || 'log') as 'log' | 'info' | 'warn' | 'error' | 'debug';
+        const message = String(d.message ?? '');
+        pushLog({ type: 'console', level, message });
+        // Heurística: console.error con shape de error de React → alimentar errores
+        if (
+          level === 'error' &&
+          /(Cannot read|is not defined|is not a function|undefined is not|Invalid hook|Maximum update depth|Element type is invalid|Failed to compile)/i.test(
+            message,
+          )
+        ) {
+          pushPreviewError({ message: message.split('\n')[0].slice(0, 300), stack: message });
+        }
       } else if (d.kind === 'preview-network') {
         pushLog({
           type: 'network',
@@ -159,7 +175,7 @@ export function PreviewPanel() {
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [setPreviewError, pushLog, setSelected]);
+  }, [setPreviewError, pushLog, pushPreviewError, setSelected]);
 
   const hasContent = Boolean(previewCode) || files.length > 0;
   const showingCode = showCode && Boolean(selectedFile);

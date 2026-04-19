@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthStore } from '@/features/auth/authStore';
 import { runStreamGenerate } from './store/streamGenerateAction';
 import { runStreamEdit } from './store/streamEditAction';
+import { usePreviewErrorsStore, buildFixPrompt } from './previewErrorsStore';
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   projectName: 'Mi proyecto',
@@ -68,7 +69,22 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
 
     setPreviewError: (err: PreviewError | null) => set({ previewError: err }),
 
-    fixWithAI: async () => {
+    fixWithAI: async (errorId?: string) => {
+      const errorsStore = usePreviewErrorsStore.getState();
+      const target = errorId
+        ? errorsStore.errors.find((e) => e.id === errorId)
+        : errorsStore.latest();
+
+      if (target) {
+        const prompt = buildFixPrompt(target, get().files);
+        // Limpia este error específico del store y el legacy single-error
+        errorsStore.remove(target.id);
+        set({ previewError: null });
+        await get().sendPrompt(prompt, 'simple_edit');
+        return;
+      }
+
+      // Fallback: legacy single previewError
       const err = get().previewError;
       if (!err) return;
       const prompt = `El preview lanza el siguiente error en runtime, arréglalo:\n\n${err.message}\n\n${err.stack}`.slice(0, 2000);
