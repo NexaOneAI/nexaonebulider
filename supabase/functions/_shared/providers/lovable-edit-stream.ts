@@ -40,6 +40,8 @@ export interface LovableEditStreamOptions {
   systemPrompt: string;
   filesContext: string;
   history: Array<{ role: string; content: string }>;
+  /** Extra system messages (e.g. project context, generated-image URL hints). */
+  extraSystem?: string[];
 }
 
 export function createLovableEditStream(opts: LovableEditStreamOptions): {
