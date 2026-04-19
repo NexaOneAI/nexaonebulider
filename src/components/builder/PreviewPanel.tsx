@@ -23,6 +23,7 @@ import {
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
+  const projectId = useBuilderStore((s) => s.projectId);
   const highlightLine = useBuilderStore((s) => s.highlightLine);
   const showCode = useBuilderStore((s) => s.showCode);
   const setShowCode = useBuilderStore((s) => s.setShowCode);
@@ -34,6 +35,21 @@ export function PreviewPanel() {
   const pushPreviewError = usePreviewErrorsStore((s) => s.push);
   const clearPreviewErrors = usePreviewErrorsStore((s) => s.clear);
   const [devOpen, setDevOpen] = useState(false);
+  const [frame, setFrame] = useState<PreviewFrameKind>(() => getPreviewFrame(projectId));
+  const [frameMenu, setFrameMenu] = useState(false);
+
+  // Re-read frame when project changes or external listener fires
+  useEffect(() => {
+    setFrame(getPreviewFrame(projectId));
+    return subscribePreviewFrame(() => setFrame(getPreviewFrame(projectId)));
+  }, [projectId]);
+
+  const handleSelectFrame = (f: PreviewFrameKind) => {
+    if (!projectId) return;
+    setPreviewFrame(projectId, f);
+    setFrame(f);
+    setFrameMenu(false);
+  };
 
   const visualEnabled = useVisualEditsStore((s) => s.enabled);
   const setVisualEnabled = useVisualEditsStore((s) => s.setEnabled);
