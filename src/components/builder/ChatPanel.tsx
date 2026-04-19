@@ -33,6 +33,7 @@ const TIER_LABELS: Record<Tier, { label: string; cost: number }> = {
 
 export function ChatPanel() {
   const { messages, loading, model, sendPrompt } = useBuilder();
+  const projectId = useBuilderStore((s) => s.projectId);
   const creditsRemaining = useBuilderStore((s) => s.creditsRemaining);
   const tier = useBuilderStore((s) => s.tier);
   const setTier = useBuilderStore((s) => s.setTier);
@@ -46,12 +47,24 @@ export function ChatPanel() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showTierMenu, setShowTierMenu] = useState(false);
   const [strategy, setStrategy] = useState<StreamEditStrategy>(() => getStreamEditStrategy());
+  const [cutoff, setCutoffState] = useState<string | null>(() => getChatCutoff(projectId));
 
   useEffect(() => subscribeStreamEditStrategy(setStrategy), []);
+  useEffect(() => {
+    setCutoffState(getChatCutoff(projectId));
+    return subscribeChatCutoff(() => setCutoffState(getChatCutoff(projectId)));
+  }, [projectId]);
+
+  const visibleMessages = useMemo(() => {
+    if (!cutoff) return messages;
+    return messages.filter((m) => (m.created_at || '') > cutoff);
+  }, [messages, cutoff]);
+
+  const hiddenCount = messages.length - visibleMessages.length;
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages, streamingFiles.length]);
+  }, [visibleMessages, streamingFiles.length]);
 
   const modelLabel = AI_MODEL_LABELS[model] || model;
   const isEdit = filesCount > 0;
@@ -65,6 +78,20 @@ export function ChatPanel() {
     const next: StreamEditStrategy = strategy === 'progressive' ? 'tokens-only' : 'progressive';
     setStreamEditStrategy(next);
     setStrategy(next);
+  };
+
+  const startNewConversation = () => {
+    if (!projectId) return;
+    const ok = window.confirm(
+      'Iniciar nueva conversación: la IA dejará de usar los mensajes anteriores como contexto. Los archivos del proyecto y el historial de versiones no se ven afectados. ¿Continuar?',
+    );
+    if (!ok) return;
+    setChatCutoff(projectId);
+  };
+
+  const restorePreviousConversation = () => {
+    if (!projectId) return;
+    clearChatCutoff(projectId);
   };
 
   return (
