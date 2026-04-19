@@ -73,6 +73,7 @@ export function createLovableEditStream(opts: LovableEditStreamOptions): {
             stream: true,
             messages: [
               { role: "system", content: opts.systemPrompt },
+              ...((opts.extraSystem ?? []).map((c) => ({ role: "system", content: c }))),
               {
                 role: "user",
                 content: `Current app files:\n\n${opts.filesContext}\n\nReturn ONLY SEARCH/REPLACE blocks for what changes. No JSON, no markdown fences.`,
