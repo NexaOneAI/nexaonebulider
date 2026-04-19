@@ -1,8 +1,10 @@
 /**
  * Types for the Visual Edits feature.
  * A "visual edit" is a non-AI, no-credits change applied directly by the
- * user via the in-preview editor (text content, color, font, spacing).
+ * user via the in-preview editor (text content, color, font, spacing,
+ * common attributes like src/href/placeholder).
  */
+import type { GeneratedFile } from '@/features/projects/projectTypes';
 
 export interface ElementLocation {
   /** File path in the project, e.g. "src/App.tsx" */
@@ -11,6 +13,14 @@ export interface ElementLocation {
   line: number;
   /** 1-based source column number */
   column: number;
+}
+
+export interface ElementAttributes {
+  src?: string;
+  href?: string;
+  placeholder?: string;
+  alt?: string;
+  title?: string;
 }
 
 export interface SelectedElement {
@@ -30,17 +40,26 @@ export interface SelectedElement {
   location: ElementLocation | null;
   /** A short snippet from the source (used for heuristic fallback) */
   snippet?: string;
+  /** Common attributes captured from the live DOM (best-effort). */
+  attributes?: ElementAttributes;
 }
+
+export type AttrName = 'src' | 'href' | 'placeholder' | 'alt' | 'title';
 
 export type VisualEditKind =
   | { kind: 'text'; value: string }
   | { kind: 'addClass'; classes: string[]; removePrefixes?: string[] }
-  | { kind: 'removeClass'; classes: string[] };
+  | { kind: 'removeClass'; classes: string[] }
+  | { kind: 'attr'; name: AttrName; value: string };
 
 export interface PendingEdit {
+  /** Unique id for this individual edit (not the element uid). */
+  id: string;
   uid: string;
   element: SelectedElement;
   change: VisualEditKind;
   /** Human label for the history panel */
   label: string;
+  /** Snapshot of the affected file BEFORE this edit, used for individual undo. */
+  beforeFile: GeneratedFile | null;
 }
