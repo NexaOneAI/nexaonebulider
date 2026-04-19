@@ -3,13 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2 } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { exportProjectZip } from '@/features/builder/zipExport';
 import { useAuth } from '@/hooks/useAuth';
 import { ShareDialog } from '@/components/sharing/ShareDialog';
+import { AssetsGallery } from './AssetsGallery';
 
 interface Props {
   onToggleHistory?: () => void;
@@ -32,6 +33,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
 
   const projectId = useBuilderStore((s) => s.projectId);
   const [shareOpen, setShareOpen] = useState(false);
+  const [assetsOpen, setAssetsOpen] = useState(false);
 
   const handleExport = async () => {
     if (files.length === 0) { toast.error('No hay archivos para exportar'); return; }
@@ -95,8 +97,20 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         >
           <History className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport}>
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar ZIP">
           <Download className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+            setAssetsOpen(true);
+          }}
+          title="Assets del proyecto (imágenes generadas)"
+        >
+          <ImageIcon className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
@@ -120,12 +134,19 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
       </div>
 
       {projectId && (
-        <ShareDialog
-          open={shareOpen}
-          onOpenChange={setShareOpen}
-          projectId={projectId}
-          projectName={projectName}
-        />
+        <>
+          <ShareDialog
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+            projectId={projectId}
+            projectName={projectName}
+          />
+          <AssetsGallery
+            open={assetsOpen}
+            onClose={() => setAssetsOpen(false)}
+            projectId={projectId}
+          />
+        </>
       )}
     </div>
   );
