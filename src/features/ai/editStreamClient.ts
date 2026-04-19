@@ -105,6 +105,9 @@ export async function editAppStream(
       case 'block':
         cb.onBlock?.(data as EditStreamBlock);
         break;
+      case 'image':
+        cb.onImage?.(data as EditStreamImage);
+        break;
       case 'done':
         finalDone = data as EditStreamDone;
         cb.onDone?.(finalDone);
