@@ -22,6 +22,8 @@ export function PreviewPanel() {
   const pushLog = usePreviewLogsStore((s) => s.push);
   const clearLogs = usePreviewLogsStore((s) => s.clear);
   const events = usePreviewLogsStore((s) => s.events);
+  const pushPreviewError = usePreviewErrorsStore((s) => s.push);
+  const clearPreviewErrors = usePreviewErrorsStore((s) => s.clear);
   const [devOpen, setDevOpen] = useState(false);
 
   const visualEnabled = useVisualEditsStore((s) => s.enabled);
