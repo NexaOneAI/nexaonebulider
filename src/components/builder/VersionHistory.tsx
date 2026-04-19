@@ -155,7 +155,7 @@ export function VersionHistory({ open, onClose }: Props) {
                       )}
                       {type === 'visual_edit' ? (
                         <span
-                          className="flex items-center gap-0.5 rounded bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] text-fuchsia-400"
+                          className="flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary"
                           title="Visual edit (sin créditos)"
                         >
                           <Sparkles className="h-2.5 w-2.5" />
