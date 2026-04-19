@@ -9,6 +9,7 @@ import { VIEW_WIDTHS } from '@/lib/constants';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewLogsStore } from '@/features/builder/previewLogsStore';
+import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
 import type { SelectedElement } from '@/features/visualEdits/types';
 
