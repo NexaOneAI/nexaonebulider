@@ -1,1 +1,4 @@
 project_id = "kaoxlzszkvdkmdrafqsa"
+
+[functions.get-shared-preview]
+verify_jwt = false

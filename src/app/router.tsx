@@ -11,6 +11,7 @@ import Builder from '@/pages/Builder';
 import ProjectDetail from '@/pages/ProjectDetail';
 import Billing from '@/pages/Billing';
 import Admin from '@/pages/Admin';
+import SharedPreview from '@/pages/SharedPreview';
 import NotFound from '@/pages/NotFound';
 
 export function AppRouter() {
@@ -28,6 +29,7 @@ export function AppRouter() {
         <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
         <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+        <Route path="/share/:token" element={<SharedPreview />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
