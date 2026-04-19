@@ -11,6 +11,7 @@ import {
 } from "../_shared/credits.ts";
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
 import { buildProjectContext } from "../_shared/projectContext.ts";
+import { classifyImageIntent } from "../_shared/imageIntent.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
 
