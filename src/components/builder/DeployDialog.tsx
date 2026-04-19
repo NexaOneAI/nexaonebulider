@@ -134,7 +134,7 @@ export function DeployDialog({ open, onClose, projectId, projectName, files }: P
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       {d.status === 'live' && (
-                        <CheckCircle2 className="h-3 w-3 shrink-0 text-emerald-400" />
+                        <CheckCircle2 className="h-3 w-3 shrink-0 text-primary" />
                       )}
                       {d.status === 'failed' && (
                         <AlertTriangle className="h-3 w-3 shrink-0 text-destructive" />
