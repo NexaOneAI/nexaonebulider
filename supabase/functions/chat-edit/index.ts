@@ -10,6 +10,7 @@ import {
   type Tier,
 } from "../_shared/credits.ts";
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
+import { buildProjectContext } from "../_shared/projectContext.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
 
@@ -145,8 +146,15 @@ serve(async (req) => {
         .map((f: any) => `### ${f.path}\n\`\`\`${f.language}\n${f.content}\n\`\`\``)
         .join("\n\n");
 
+      // Inject a structured project summary so the model gets a high-signal
+      // overview (routes/components/design tokens) before the raw file dump.
+      const projectContext = buildProjectContext(
+        currentFiles.map((f: any) => ({ path: f.path, content: f.content })),
+      );
+
       const messages = [
         { role: "system", content: SYSTEM_PROMPT },
+        { role: "system", content: projectContext },
         {
           role: "user",
           content: `Current app files:\n\n${filesContext}\n\nReturn ONLY SEARCH/REPLACE blocks for what changes.`,
