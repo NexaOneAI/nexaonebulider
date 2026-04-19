@@ -14,6 +14,12 @@ export interface EditStreamBlock {
   index: number;
 }
 
+export interface EditStreamImage {
+  url: string;
+  alt: string;
+  placement: string;
+}
+
 export interface EditStreamDone {
   full: string;
   summary?: string;
@@ -25,11 +31,13 @@ export interface EditStreamDone {
   credits_used: number;
   credits_remaining: number;
   tier: string;
+  generated_image?: EditStreamImage | null;
 }
 
 export interface EditStreamCallbacks {
   onToken?: (delta: string) => void;
   onBlock?: (block: EditStreamBlock) => void;
+  onImage?: (image: EditStreamImage) => void;
   onError?: (message: string) => void;
   onDone?: (done: EditStreamDone) => void;
   signal?: AbortSignal;
