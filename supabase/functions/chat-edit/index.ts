@@ -10,7 +10,7 @@ import {
   type Tier,
 } from "../_shared/credits.ts";
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
-import { buildProjectContext } from "../_shared/projectContext.ts";
+import { buildProjectContext, loadProjectKnowledge } from "../_shared/projectContext.ts";
 import { classifyImageIntent } from "../_shared/imageIntent.ts";
 
 const SYSTEM_PROMPT = `You are an expert React/TypeScript/Tailwind developer editing an existing app.
@@ -158,6 +158,7 @@ serve(async (req) => {
       const projectContext = buildProjectContext(
         currentFiles.map((f: any) => ({ path: f.path, content: f.content })),
       );
+      const knowledgeBlock = await loadProjectKnowledge(admin, projectId);
 
       // Image intent detection — if the user asks for an image, generate it
       // first via /image-gen and inject the resulting public URL as extra
@@ -203,6 +204,7 @@ serve(async (req) => {
 
       const messages = [
         { role: "system", content: SYSTEM_PROMPT },
+        ...(knowledgeBlock ? [{ role: "system", content: knowledgeBlock }] : []),
         { role: "system", content: projectContext },
         ...(imageContext ? [{ role: "system", content: imageContext }] : []),
         {

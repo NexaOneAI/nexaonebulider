@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes, Brain } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -11,6 +11,8 @@ import { exportProjectZip } from '@/features/builder/zipExport';
 import { useAuth } from '@/hooks/useAuth';
 import { ShareDialog } from '@/components/sharing/ShareDialog';
 import { AssetsGallery } from './AssetsGallery';
+import { KnowledgeDialog } from './KnowledgeDialog';
+import { DeployDialog } from './DeployDialog';
 import {
   getSandbox,
   setSandbox,
@@ -41,6 +43,8 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const projectId = useBuilderStore((s) => s.projectId);
   const [shareOpen, setShareOpen] = useState(false);
   const [assetsOpen, setAssetsOpen] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [deployOpen, setDeployOpen] = useState(false);
   const [sandbox, setSandboxState] = useState<SandboxKind>(() => getSandbox(projectId));
 
   useEffect(() => {
@@ -166,7 +170,29 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         >
           <Boxes className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => toast.info('Deploy próximamente')}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+            setKnowledgeOpen(true);
+          }}
+          title="Knowledge: instrucciones persistentes que la IA aplicará en cada prompt"
+        >
+          <Brain className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => {
+            if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+            if (files.length === 0) { toast.info('Genera una app primero'); return; }
+            setDeployOpen(true);
+          }}
+          title="Desplegar a producción (Netlify)"
+        >
           <Rocket className="h-4 w-4" />
         </Button>
         <Button variant="ghost" size="icon" className={`h-8 w-8 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}>
@@ -186,6 +212,18 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
             open={assetsOpen}
             onClose={() => setAssetsOpen(false)}
             projectId={projectId}
+          />
+          <KnowledgeDialog
+            open={knowledgeOpen}
+            onClose={() => setKnowledgeOpen(false)}
+            projectId={projectId}
+          />
+          <DeployDialog
+            open={deployOpen}
+            onClose={() => setDeployOpen(false)}
+            projectId={projectId}
+            projectName={projectName}
+            files={files}
           />
         </>
       )}

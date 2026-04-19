@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Zap, LogOut, LayoutDashboard, CreditCard, Shield } from 'lucide-react';
+import { Zap, LogOut, LayoutDashboard, CreditCard, Shield, Plug } from 'lucide-react';
 
 export function Topbar() {
   const { session, profile, signOut, isAdmin } = useAuth();
@@ -30,6 +30,9 @@ export function Topbar() {
               </Button>
               <Button variant="ghost" size="sm" onClick={() => navigate('/billing')}>
                 <CreditCard className="mr-1.5 h-4 w-4" /> Billing
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => navigate('/connectors')}>
+                <Plug className="mr-1.5 h-4 w-4" /> Connectors
               </Button>
               {isAdmin && (
                 <Button variant="ghost" size="sm" onClick={() => navigate('/admin')}>

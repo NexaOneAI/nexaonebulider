@@ -10,6 +10,7 @@ import Dashboard from '@/pages/Dashboard';
 import Builder from '@/pages/Builder';
 import ProjectDetail from '@/pages/ProjectDetail';
 import Billing from '@/pages/Billing';
+import Connectors from '@/pages/Connectors';
 import Admin from '@/pages/Admin';
 import SharedPreview from '@/pages/SharedPreview';
 import NotFound from '@/pages/NotFound';
@@ -28,6 +29,7 @@ export function AppRouter() {
         <Route path="/builder/:projectId" element={<ProtectedRoute><Builder /></ProtectedRoute>} />
         <Route path="/project/:projectId" element={<ProtectedRoute><ProjectDetail /></ProtectedRoute>} />
         <Route path="/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
+        <Route path="/connectors" element={<ProtectedRoute><Connectors /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
         <Route path="/share/:token" element={<SharedPreview />} />
         <Route path="*" element={<NotFound />} />
