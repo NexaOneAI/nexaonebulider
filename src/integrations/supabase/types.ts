@@ -164,6 +164,60 @@ export type Database = {
         }
         Relationships: []
       }
+      project_shares: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          last_viewed_at: string | null
+          pinned_version_id: string | null
+          project_id: string
+          token: string
+          updated_at: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_viewed_at?: string | null
+          pinned_version_id?: string | null
+          project_id: string
+          token: string
+          updated_at?: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          last_viewed_at?: string | null
+          pinned_version_id?: string | null
+          project_id?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_shares_pinned_version_id_fkey"
+            columns: ["pinned_version_id"]
+            isOneToOne: false
+            referencedRelation: "project_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_shares_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_versions: {
         Row: {
           created_at: string
@@ -307,6 +361,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_share_view: { Args: { _token: string }; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
