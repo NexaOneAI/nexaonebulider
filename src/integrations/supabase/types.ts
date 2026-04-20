@@ -139,6 +139,7 @@ export type Database = {
           is_unlimited: boolean
           plan: Database["public"]["Enums"]["user_plan"]
           updated_at: string
+          webcontainers_enabled: boolean
         }
         Insert: {
           avatar_url?: string | null
@@ -150,6 +151,7 @@ export type Database = {
           is_unlimited?: boolean
           plan?: Database["public"]["Enums"]["user_plan"]
           updated_at?: string
+          webcontainers_enabled?: boolean
         }
         Update: {
           avatar_url?: string | null
@@ -161,6 +163,7 @@ export type Database = {
           is_unlimited?: boolean
           plan?: Database["public"]["Enums"]["user_plan"]
           updated_at?: string
+          webcontainers_enabled?: boolean
         }
         Relationships: []
       }
