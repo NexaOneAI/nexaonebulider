@@ -61,7 +61,43 @@ export function VisualEditPopover({ iframeRect }: Props) {
     if (!selected) return;
     if (selected.isTextLeaf) setTextValue(selected.text);
     setAttrDraft({ ...(selected.attributes || {}) });
+    setAiPrompt('');
   }, [selected?.uid, selected?.isTextLeaf, selected?.text, selected?.attributes]);
+
+  const handleAiEdit = async () => {
+    if (!selected || !aiPrompt.trim()) return;
+    const loc = selected.location;
+    const ctxLines: string[] = [];
+    ctxLines.push(`Cambio solicitado sobre un elemento específico del preview:`);
+    ctxLines.push('');
+    ctxLines.push(`**Instrucción del usuario:** ${aiPrompt.trim()}`);
+    ctxLines.push('');
+    ctxLines.push(`**Elemento seleccionado:**`);
+    ctxLines.push(`- Tag: \`<${selected.tag}>\``);
+    if (loc) {
+      ctxLines.push(`- Archivo: \`${loc.path}\``);
+      ctxLines.push(`- Línea: ${loc.line}, columna: ${loc.column}`);
+    }
+    if (selected.className) {
+      ctxLines.push(`- Clases actuales: \`${selected.className}\``);
+    }
+    if (selected.isTextLeaf && selected.text) {
+      ctxLines.push(`- Texto actual: "${selected.text.slice(0, 200)}"`);
+    }
+    if (selected.attributes && Object.keys(selected.attributes).length > 0) {
+      const attrs = Object.entries(selected.attributes)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}="${String(v).slice(0, 80)}"`)
+        .join(' ');
+      if (attrs) ctxLines.push(`- Atributos: ${attrs}`);
+    }
+    ctxLines.push('');
+    ctxLines.push('Aplica el cambio sólo a ese elemento (mismo archivo, misma línea). Mantén el resto intacto.');
+    const prompt = ctxLines.join('\n');
+    setAiPrompt('');
+    setSelected(null);
+    await sendPrompt(prompt, 'simple_edit');
+  };
 
   if (!selected) return null;
 
