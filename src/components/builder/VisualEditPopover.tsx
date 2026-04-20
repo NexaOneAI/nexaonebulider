@@ -5,9 +5,11 @@
 import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
+import { useBuilderStore } from '@/features/builder/builderStore';
 import {
   TW_TEXT_COLORS,
   TW_BG_COLORS,
@@ -17,7 +19,7 @@ import {
   spacingClasses,
 } from '@/features/visualEdits/tailwindMap';
 import type { AttrName } from '@/features/visualEdits/types';
-import { X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 interface Props {
   /** Iframe rect in the parent viewport (for absolute positioning). */
@@ -48,15 +50,54 @@ export function VisualEditPopover({ iframeRect }: Props) {
   const selected = useVisualEditsStore((s) => s.selected);
   const setSelected = useVisualEditsStore((s) => s.setSelected);
   const applyChange = useVisualEditsStore((s) => s.applyChange);
+  const sendPrompt = useBuilderStore((s) => s.sendPrompt);
+  const loading = useBuilderStore((s) => s.loading);
   const [textValue, setTextValue] = useState('');
   const [attrDraft, setAttrDraft] = useState<Record<string, string>>({});
+  const [aiPrompt, setAiPrompt] = useState('');
 
   // Sync local state when selection changes
   useEffect(() => {
     if (!selected) return;
     if (selected.isTextLeaf) setTextValue(selected.text);
     setAttrDraft({ ...(selected.attributes || {}) });
+    setAiPrompt('');
   }, [selected?.uid, selected?.isTextLeaf, selected?.text, selected?.attributes]);
+
+  const handleAiEdit = async () => {
+    if (!selected || !aiPrompt.trim()) return;
+    const loc = selected.location;
+    const ctxLines: string[] = [];
+    ctxLines.push(`Cambio solicitado sobre un elemento específico del preview:`);
+    ctxLines.push('');
+    ctxLines.push(`**Instrucción del usuario:** ${aiPrompt.trim()}`);
+    ctxLines.push('');
+    ctxLines.push(`**Elemento seleccionado:**`);
+    ctxLines.push(`- Tag: \`<${selected.tag}>\``);
+    if (loc) {
+      ctxLines.push(`- Archivo: \`${loc.path}\``);
+      ctxLines.push(`- Línea: ${loc.line}, columna: ${loc.column}`);
+    }
+    if (selected.className) {
+      ctxLines.push(`- Clases actuales: \`${selected.className}\``);
+    }
+    if (selected.isTextLeaf && selected.text) {
+      ctxLines.push(`- Texto actual: "${selected.text.slice(0, 200)}"`);
+    }
+    if (selected.attributes && Object.keys(selected.attributes).length > 0) {
+      const attrs = Object.entries(selected.attributes)
+        .filter(([, v]) => v)
+        .map(([k, v]) => `${k}="${String(v).slice(0, 80)}"`)
+        .join(' ');
+      if (attrs) ctxLines.push(`- Atributos: ${attrs}`);
+    }
+    ctxLines.push('');
+    ctxLines.push('Aplica el cambio sólo a ese elemento (mismo archivo, misma línea). Mantén el resto intacto.');
+    const prompt = ctxLines.join('\n');
+    setAiPrompt('');
+    setSelected(null);
+    await sendPrompt(prompt, 'simple_edit');
+  };
 
   if (!selected) return null;
 
@@ -100,7 +141,11 @@ export function VisualEditPopover({ iframeRect }: Props) {
       </div>
 
       <Tabs defaultValue={defaultTab} key={selected.uid}>
-        <TabsList className="grid h-8 w-full grid-cols-5 text-[10px]">
+        <TabsList className="grid h-8 w-full grid-cols-6 text-[10px]">
+          <TabsTrigger value="ai" className="h-6 gap-1 text-[10px]">
+            <Sparkles className="h-3 w-3" />
+            IA
+          </TabsTrigger>
           <TabsTrigger value="text" className="h-6 text-[10px]" disabled={!selected.isTextLeaf}>
             Texto
           </TabsTrigger>
@@ -111,6 +156,36 @@ export function VisualEditPopover({ iframeRect }: Props) {
             Attrs
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ai" className="mt-2 space-y-2">
+          <Label className="text-[11px] text-muted-foreground">
+            Describe el cambio para este {`<${selected.tag}>`}
+          </Label>
+          <Textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="Ej: hazlo más grande y centrado, agrega un icono de flecha…"
+            className="min-h-[70px] resize-none text-xs"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleAiEdit();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            className="h-7 w-full gap-1 text-[11px]"
+            onClick={handleAiEdit}
+            disabled={!aiPrompt.trim() || loading}
+          >
+            <Sparkles className="h-3 w-3" />
+            {loading ? 'Aplicando…' : 'Aplicar con IA'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground">
+            Envía contexto del elemento (tag, clases, archivo, línea) a la IA. Cmd/Ctrl+Enter para enviar.
+          </p>
+        </TabsContent>
 
         <TabsContent value="text" className="mt-2 space-y-2">
           <Label className="text-[11px] text-muted-foreground">Contenido</Label>

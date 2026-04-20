@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Terminal, Activity, Trash2, X, Filter, Boxes } from 'lucide-react';
+import { Terminal, Activity, Trash2, X, Filter, Boxes, AlertOctagon, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreviewLogsStore, type PreviewEvent } from '@/features/builder/previewLogsStore';
+import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
+import { useBuilderStore } from '@/features/builder/builderStore';
 import { SandpackTerminal } from './SandpackTerminal';
 import { cn } from '@/lib/utils';
 
@@ -10,12 +12,17 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'console' | 'network' | 'terminal';
+type Tab = 'console' | 'network' | 'terminal' | 'errors';
 
 export function DevToolsPanel({ open, onClose }: Props) {
   const events = usePreviewLogsStore((s) => s.events);
   const clear = usePreviewLogsStore((s) => s.clear);
-  const [tab, setTab] = useState<Tab>('console');
+  const errors = usePreviewErrorsStore((s) => s.errors);
+  const removeError = usePreviewErrorsStore((s) => s.remove);
+  const clearErrors = usePreviewErrorsStore((s) => s.clear);
+  const fixWithAI = useBuilderStore((s) => s.fixWithAI);
+  const loading = useBuilderStore((s) => s.loading);
+  const [tab, setTab] = useState<Tab>(errors.length > 0 ? 'errors' : 'console');
   const [filter, setFilter] = useState('');
 
   const consoleEvents = useMemo(
@@ -110,6 +117,24 @@ export function DevToolsPanel({ open, onClose }: Props) {
           <Boxes className="h-3 w-3" />
           Terminal
         </button>
+        <button
+          onClick={() => setTab('errors')}
+          className={cn(
+            'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
+            tab === 'errors'
+              ? 'bg-destructive/15 text-destructive'
+              : 'text-muted-foreground hover:bg-muted/50',
+          )}
+          title="Errores de runtime con auto-fix por IA"
+        >
+          <AlertOctagon className="h-3 w-3" />
+          Errors
+          {errors.length > 0 && (
+            <span className="rounded bg-destructive/20 px-1 text-[10px] text-destructive">
+              {errors.length}
+            </span>
+          )}
+        </button>
 
         <div className="ml-2 flex flex-1 items-center gap-1">
           <Filter className="h-3 w-3 text-muted-foreground" />
@@ -121,7 +146,13 @@ export function DevToolsPanel({ open, onClose }: Props) {
           />
         </div>
 
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clear} title="Limpiar">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => (tab === 'errors' ? clearErrors() : clear())}
+          title="Limpiar"
+        >
           <Trash2 className="h-3 w-3" />
         </Button>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose} title="Cerrar">
@@ -132,6 +163,63 @@ export function DevToolsPanel({ open, onClose }: Props) {
       <div className="flex-1 overflow-auto font-mono text-[11px]">
         {tab === 'terminal' ? (
           <SandpackTerminal />
+        ) : tab === 'errors' ? (
+          errors.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">
+              <span className="text-base">✨</span>
+              <span>Sin errores de runtime. El preview está limpio.</span>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/20">
+              {[...errors].reverse().map((err) => (
+                <li key={err.id} className="space-y-1.5 bg-destructive/5 px-3 py-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <pre className="whitespace-pre-wrap break-all text-[11px] text-destructive">
+                        {err.message}
+                      </pre>
+                      {err.inferredFile && (
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          📄 {err.inferredFile}
+                          {err.inferredLine ? `:${err.inferredLine}` : ''}
+                          {err.occurrences.length > 1 && ` · ×${err.occurrences.length}`}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-[10px]"
+                        onClick={() => fixWithAI(err.id)}
+                        disabled={loading}
+                        title="Envía el error + archivo culpable a la IA"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Fix con IA
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => removeError(err.id)}
+                        title="Descartar"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  {err.stack && (
+                    <details className="text-[10px] text-muted-foreground">
+                      <summary className="cursor-pointer hover:text-foreground">stack trace</summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-all opacity-70">
+                        {err.stack.split('\n').slice(0, 8).join('\n')}
+                      </pre>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
         ) : filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {tab === 'console'
