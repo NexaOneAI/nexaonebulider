@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes, Brain } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes, Brain, Github as GithubIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -13,6 +13,8 @@ import { ShareDialog } from '@/components/sharing/ShareDialog';
 import { AssetsGallery } from './AssetsGallery';
 import { KnowledgeDialog } from './KnowledgeDialog';
 import { DeployDialog } from './DeployDialog';
+import { GithubDialog } from './GithubDialog';
+import { useGithubStore } from '@/features/github/githubStore';
 import {
   getSandbox,
   setSandbox,
@@ -45,6 +47,14 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const [assetsOpen, setAssetsOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
+  const githubStatus = useGithubStore((s) => s.byProject[projectId]);
+  const refreshGithub = useGithubStore((s) => s.refresh);
+  const githubPushing = useGithubStore((s) => s.pushing[projectId] ?? false);
+
+  useEffect(() => {
+    if (projectId) refreshGithub(projectId).catch(() => {});
+  }, [projectId, refreshGithub]);
   const [sandbox, setSandboxState] = useState<SandboxKind>(() => getSandbox(projectId));
 
   useEffect(() => {
