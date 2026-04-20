@@ -5,9 +5,11 @@
 import { useEffect, useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { useVisualEditsStore } from '@/features/visualEdits/visualEditsStore';
+import { useBuilderStore } from '@/features/builder/builderStore';
 import {
   TW_TEXT_COLORS,
   TW_BG_COLORS,
@@ -17,7 +19,7 @@ import {
   spacingClasses,
 } from '@/features/visualEdits/tailwindMap';
 import type { AttrName } from '@/features/visualEdits/types';
-import { X } from 'lucide-react';
+import { Sparkles, X } from 'lucide-react';
 
 interface Props {
   /** Iframe rect in the parent viewport (for absolute positioning). */
