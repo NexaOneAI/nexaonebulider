@@ -75,7 +75,7 @@ export function WebContainerPreview({ files, projectName }: Props) {
   if (!isWebContainersAvailable()) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-border/50 bg-card p-6 text-center shadow-elevated">
-        <AlertCircle className="h-8 w-8 text-amber-500" />
+        <AlertCircle className="h-8 w-8 text-primary" />
         <h3 className="text-base font-semibold">WebContainers no disponible</h3>
         <p className="max-w-md text-sm text-muted-foreground">
           Esta página no tiene los headers <code className="rounded bg-muted px-1">COOP/COEP</code> activos
