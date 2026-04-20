@@ -15,7 +15,7 @@
  * in the terminal panel.
  */
 import type { WebContainer, FileSystemTree } from '@webcontainer/api';
-import { buildScaffoldFiles } from './zipExport';
+import { buildScaffoldFiles } from './projectScaffoldClient';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 
 export type WCStatus =
