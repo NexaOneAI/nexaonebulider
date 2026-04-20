@@ -191,7 +191,6 @@ export async function runStreamEdit({
       autoPushToGithub(
         projectId,
         done.files,
-        done.version_id,
         `chore: ${(done.summary || 'edit').slice(0, 60)}`,
       ).catch((e) => console.warn('[github] auto-push failed', e));
     }
@@ -216,7 +215,6 @@ export async function runStreamEdit({
 async function autoPushToGithub(
   projectId: string,
   files: GeneratedFile[],
-  versionId: string | undefined,
   message: string,
 ) {
   const { refresh, setPushing } = useGithubStore.getState();
@@ -229,7 +227,6 @@ async function autoPushToGithub(
       projectId,
       files: files.map((f) => ({ path: f.path, content: f.content })),
       message,
-      versionId,
     });
     await refresh(projectId).catch(() => {});
   } finally {
