@@ -144,13 +144,13 @@ export function WebContainerPreview({ files, projectName }: Props) {
 
       {/* Main area: iframe (when ready) + log drawer */}
       <div className="flex min-h-0 flex-1 flex-col">
-        <div className="relative flex min-h-0 flex-1 bg-white">
+        <div className="relative flex min-h-0 flex-1 bg-background">
           {snap.status === 'ready' && snap.url ? (
             <iframe
               src={snap.url}
               className="h-full w-full"
               title="WebContainer Preview"
-              style={{ border: 'none', background: 'white' }}
+              style={{ border: 'none', background: 'hsl(var(--background))' }}
               allow="cross-origin-isolated"
             />
           ) : (
@@ -176,7 +176,7 @@ export function WebContainerPreview({ files, projectName }: Props) {
         </div>
 
         {showLogs && (
-          <div className="h-48 overflow-auto border-t border-border/50 bg-black/90 p-2 font-mono text-[11px] text-green-400">
+          <div className="h-48 overflow-auto border-t border-border/50 bg-foreground/95 p-2 font-mono text-[11px] text-background">
             {logs.length === 0 ? (
               <div className="text-muted-foreground">Sin logs todavía…</div>
             ) : (
@@ -185,10 +185,10 @@ export function WebContainerPreview({ files, projectName }: Props) {
                   key={i}
                   className={
                     l.kind === 'stderr'
-                      ? 'text-red-400'
+                      ? 'text-destructive'
                       : l.kind === 'system'
-                      ? 'text-amber-300'
-                      : 'text-green-300'
+                      ? 'text-primary'
+                      : 'text-background'
                   }
                 >
                   {l.line}
