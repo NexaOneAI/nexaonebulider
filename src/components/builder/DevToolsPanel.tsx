@@ -1,7 +1,9 @@
 import { useState, useMemo } from 'react';
-import { Terminal, Activity, Trash2, X, Filter, Boxes } from 'lucide-react';
+import { Terminal, Activity, Trash2, X, Filter, Boxes, AlertOctagon, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePreviewLogsStore, type PreviewEvent } from '@/features/builder/previewLogsStore';
+import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
+import { useBuilderStore } from '@/features/builder/builderStore';
 import { SandpackTerminal } from './SandpackTerminal';
 import { cn } from '@/lib/utils';
 
@@ -10,7 +12,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'console' | 'network' | 'terminal';
+type Tab = 'console' | 'network' | 'terminal' | 'errors';
 
 export function DevToolsPanel({ open, onClose }: Props) {
   const events = usePreviewLogsStore((s) => s.events);
