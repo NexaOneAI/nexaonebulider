@@ -117,6 +117,24 @@ export function DevToolsPanel({ open, onClose }: Props) {
           <Boxes className="h-3 w-3" />
           Terminal
         </button>
+        <button
+          onClick={() => setTab('errors')}
+          className={cn(
+            'flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium transition-colors',
+            tab === 'errors'
+              ? 'bg-destructive/15 text-destructive'
+              : 'text-muted-foreground hover:bg-muted/50',
+          )}
+          title="Errores de runtime con auto-fix por IA"
+        >
+          <AlertOctagon className="h-3 w-3" />
+          Errors
+          {errors.length > 0 && (
+            <span className="rounded bg-destructive/20 px-1 text-[10px] text-destructive">
+              {errors.length}
+            </span>
+          )}
+        </button>
 
         <div className="ml-2 flex flex-1 items-center gap-1">
           <Filter className="h-3 w-3 text-muted-foreground" />
