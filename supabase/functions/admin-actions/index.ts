@@ -202,6 +202,27 @@ serve(async (req) => {
         });
       }
 
+      case "toggle_webcontainers": {
+        const { userId, enabled } = params;
+        if (!userId || typeof enabled !== "boolean") {
+          return new Response(JSON.stringify({ error: "userId y enabled requeridos" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const { error: updateError } = await adminClient
+          .from("profiles")
+          .update({ webcontainers_enabled: enabled })
+          .eq("id", userId);
+
+        if (updateError) throw updateError;
+
+        return new Response(JSON.stringify({ success: true }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       default:
         return new Response(JSON.stringify({ error: `Acción desconocida: ${action}` }), {
           status: 400,
