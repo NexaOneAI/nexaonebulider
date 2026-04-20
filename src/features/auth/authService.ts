@@ -48,6 +48,7 @@ export const authService = {
       plan: data.plan,
       credits: data.credits,
       is_unlimited: data.is_unlimited,
+      webcontainers_enabled: (data as { webcontainers_enabled?: boolean }).webcontainers_enabled ?? false,
       created_at: data.created_at,
       role: 'user', // role comes from user_roles table
     };

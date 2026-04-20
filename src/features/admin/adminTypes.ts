@@ -6,6 +6,7 @@ export interface AdminUser {
   role: string;
   credits: number;
   is_unlimited: boolean;
+  webcontainers_enabled: boolean;
   plan: string;
   created_at: string;
   updated_at: string;
