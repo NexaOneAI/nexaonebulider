@@ -150,7 +150,7 @@ export function WebContainerPreview({ files, projectName }: Props) {
               src={snap.url}
               className="h-full w-full"
               title="WebContainer Preview"
-              style={{ border: 'none', background: 'hsl(var(--background))' }}
+              style={{ border: 'none' }}
               allow="cross-origin-isolated"
             />
           ) : (

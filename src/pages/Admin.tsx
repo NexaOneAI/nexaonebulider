@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { AppShell } from '@/components/layout/AppShell';
 import { adminService } from '@/features/admin/adminService';
 import type { AdminUser, AdminStats } from '@/features/admin/adminTypes';
-import { Shield, Users, CreditCard, Folder, Search, Coins, Infinity, Crown, RefreshCw } from 'lucide-react';
+import { Shield, Users, CreditCard, Folder, Search, Coins, Infinity, Crown, RefreshCw, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -59,6 +59,25 @@ export default function Admin() {
       toast.success(`${user.email}: modo ilimitado ${!user.is_unlimited ? 'activado' : 'desactivado'}`);
     } catch {
       toast.error('Error al cambiar modo ilimitado');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleToggleWebContainers = async (user: AdminUser) => {
+    setActionLoading(true);
+    try {
+      await adminService.toggleWebContainers(user.id, !user.webcontainers_enabled);
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === user.id ? { ...u, webcontainers_enabled: !u.webcontainers_enabled } : u,
+        ),
+      );
+      toast.success(
+        `${user.email}: WebContainers ${!user.webcontainers_enabled ? 'activado' : 'desactivado'}`,
+      );
+    } catch {
+      toast.error('Error al cambiar WebContainers');
     } finally {
       setActionLoading(false);
     }
@@ -187,6 +206,7 @@ export default function Admin() {
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Plan</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Créditos</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ilimitado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground" title="WebContainers (Node.js real en el browser)">WC</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Rol</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Registro</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acciones</th>
@@ -234,6 +254,13 @@ export default function Admin() {
                       />
                     </td>
                     <td className="px-4 py-3">
+                      <Switch
+                        checked={user.webcontainers_enabled}
+                        onCheckedChange={() => handleToggleWebContainers(user)}
+                        disabled={actionLoading}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
                       <Badge
                         variant={user.role === 'admin' ? 'default' : 'secondary'}
                         className="text-xs"
@@ -261,7 +288,7 @@ export default function Admin() {
                 ))}
                 {filteredUsers.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
+                    <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                       {search ? 'No se encontraron usuarios' : 'No hay usuarios registrados'}
                     </td>
                   </tr>
