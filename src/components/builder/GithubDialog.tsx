@@ -197,7 +197,7 @@ export function GithubDialog({ open, onClose, projectId, projectName, files }: P
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Github className="h-4 w-4" />
+            <GithubIcon className="h-4 w-4" />
             GitHub Sync
           </DialogTitle>
           <DialogDescription>
@@ -248,7 +248,7 @@ export function GithubDialog({ open, onClose, projectId, projectName, files }: P
                     en cada versión.
                   </p>
                   <Button onClick={handleConnect} disabled={connecting} className="w-full gap-2">
-                    <Github className="h-4 w-4" />
+                    <GithubIcon className="h-4 w-4" />
                     {connecting ? 'Esperando autorización…' : 'Conectar con GitHub'}
                   </Button>
                 </div>
