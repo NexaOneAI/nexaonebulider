@@ -17,7 +17,12 @@ type Tab = 'console' | 'network' | 'terminal' | 'errors';
 export function DevToolsPanel({ open, onClose }: Props) {
   const events = usePreviewLogsStore((s) => s.events);
   const clear = usePreviewLogsStore((s) => s.clear);
-  const [tab, setTab] = useState<Tab>('console');
+  const errors = usePreviewErrorsStore((s) => s.errors);
+  const removeError = usePreviewErrorsStore((s) => s.remove);
+  const clearErrors = usePreviewErrorsStore((s) => s.clear);
+  const fixWithAI = useBuilderStore((s) => s.fixWithAI);
+  const loading = useBuilderStore((s) => s.loading);
+  const [tab, setTab] = useState<Tab>(errors.length > 0 ? 'errors' : 'console');
   const [filter, setFilter] = useState('');
 
   const consoleEvents = useMemo(
