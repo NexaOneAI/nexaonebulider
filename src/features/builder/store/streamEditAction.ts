@@ -11,6 +11,8 @@ import { generatePreviewHtml } from '@/features/builder/preview';
 import { useAuthStore } from '@/features/auth/authStore';
 import { getStreamEditStrategy } from '@/features/builder/streamPrefs';
 import { getChatCutoff } from '@/features/builder/chatCutoff';
+import { githubService } from '@/features/github/githubService';
+import { useGithubStore } from '@/features/github/githubStore';
 import type { ExtendedBuilderState } from '@/features/builder/builderTypes';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import type { Tier } from '@/features/ai/providers/types';
@@ -185,6 +187,13 @@ export async function runStreamEdit({
     }));
 
     useAuthStore.getState().refreshProfile().catch(() => {});
+    if (projectId) {
+      autoPushToGithub(
+        projectId,
+        done.files,
+        `chore: ${(done.summary || 'edit').slice(0, 60)}`,
+      ).catch((e) => console.warn('[github] auto-push failed', e));
+    }
     return { ok: true };
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Edit stream error';
@@ -200,5 +209,27 @@ export async function runStreamEdit({
     });
     updateAssistant(`⚠️ ${msg}. Reintentando sin streaming…`);
     return { ok: false };
+  }
+}
+
+async function autoPushToGithub(
+  projectId: string,
+  files: GeneratedFile[],
+  message: string,
+) {
+  const { refresh, setPushing } = useGithubStore.getState();
+  const status = useGithubStore.getState().byProject[projectId]
+    ?? (await refresh(projectId).catch(() => null));
+  if (!status?.repo || !status.repo.auto_push) return;
+  setPushing(projectId, true);
+  try {
+    await githubService.push({
+      projectId,
+      files: files.map((f) => ({ path: f.path, content: f.content })),
+      message,
+    });
+    await refresh(projectId).catch(() => {});
+  } finally {
+    setPushing(projectId, false);
   }
 }

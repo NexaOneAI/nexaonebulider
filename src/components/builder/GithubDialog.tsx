@@ -19,7 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Loader } from '@/components/ui/Loader';
-import { Github as GithubIcon, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { GitBranch as GithubIcon, ExternalLink, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   githubService,
