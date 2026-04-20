@@ -146,7 +146,13 @@ export function DevToolsPanel({ open, onClose }: Props) {
           />
         </div>
 
-        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clear} title="Limpiar">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={() => (tab === 'errors' ? clearErrors() : clear())}
+          title="Limpiar"
+        >
           <Trash2 className="h-3 w-3" />
         </Button>
         <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose} title="Cerrar">
@@ -157,6 +163,63 @@ export function DevToolsPanel({ open, onClose }: Props) {
       <div className="flex-1 overflow-auto font-mono text-[11px]">
         {tab === 'terminal' ? (
           <SandpackTerminal />
+        ) : tab === 'errors' ? (
+          errors.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-1 text-muted-foreground">
+              <span className="text-base">✨</span>
+              <span>Sin errores de runtime. El preview está limpio.</span>
+            </div>
+          ) : (
+            <ul className="divide-y divide-border/20">
+              {[...errors].reverse().map((err) => (
+                <li key={err.id} className="space-y-1.5 bg-destructive/5 px-3 py-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <pre className="whitespace-pre-wrap break-all text-[11px] text-destructive">
+                        {err.message}
+                      </pre>
+                      {err.inferredFile && (
+                        <div className="mt-1 text-[10px] text-muted-foreground">
+                          📄 {err.inferredFile}
+                          {err.inferredLine ? `:${err.inferredLine}` : ''}
+                          {err.occurrences.length > 1 && ` · ×${err.occurrences.length}`}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        size="sm"
+                        className="h-6 gap-1 px-2 text-[10px]"
+                        onClick={() => fixWithAI(err.id)}
+                        disabled={loading}
+                        title="Envía el error + archivo culpable a la IA"
+                      >
+                        <Sparkles className="h-3 w-3" />
+                        Fix con IA
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-6 w-6"
+                        onClick={() => removeError(err.id)}
+                        title="Descartar"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                  {err.stack && (
+                    <details className="text-[10px] text-muted-foreground">
+                      <summary className="cursor-pointer hover:text-foreground">stack trace</summary>
+                      <pre className="mt-1 whitespace-pre-wrap break-all opacity-70">
+                        {err.stack.split('\n').slice(0, 8).join('\n')}
+                      </pre>
+                    </details>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )
         ) : filtered.length === 0 ? (
           <div className="flex h-full items-center justify-center text-muted-foreground">
             {tab === 'console'
