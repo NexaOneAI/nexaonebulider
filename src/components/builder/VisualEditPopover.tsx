@@ -141,7 +141,11 @@ export function VisualEditPopover({ iframeRect }: Props) {
       </div>
 
       <Tabs defaultValue={defaultTab} key={selected.uid}>
-        <TabsList className="grid h-8 w-full grid-cols-5 text-[10px]">
+        <TabsList className="grid h-8 w-full grid-cols-6 text-[10px]">
+          <TabsTrigger value="ai" className="h-6 gap-1 text-[10px]">
+            <Sparkles className="h-3 w-3" />
+            IA
+          </TabsTrigger>
           <TabsTrigger value="text" className="h-6 text-[10px]" disabled={!selected.isTextLeaf}>
             Texto
           </TabsTrigger>
@@ -152,6 +156,36 @@ export function VisualEditPopover({ iframeRect }: Props) {
             Attrs
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="ai" className="mt-2 space-y-2">
+          <Label className="text-[11px] text-muted-foreground">
+            Describe el cambio para este {`<${selected.tag}>`}
+          </Label>
+          <Textarea
+            value={aiPrompt}
+            onChange={(e) => setAiPrompt(e.target.value)}
+            placeholder="Ej: hazlo más grande y centrado, agrega un icono de flecha…"
+            className="min-h-[70px] resize-none text-xs"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                handleAiEdit();
+              }
+            }}
+          />
+          <Button
+            size="sm"
+            className="h-7 w-full gap-1 text-[11px]"
+            onClick={handleAiEdit}
+            disabled={!aiPrompt.trim() || loading}
+          >
+            <Sparkles className="h-3 w-3" />
+            {loading ? 'Aplicando…' : 'Aplicar con IA'}
+          </Button>
+          <p className="text-[10px] text-muted-foreground">
+            Envía contexto del elemento (tag, clases, archivo, línea) a la IA. Cmd/Ctrl+Enter para enviar.
+          </p>
+        </TabsContent>
 
         <TabsContent value="text" className="mt-2 space-y-2">
           <Label className="text-[11px] text-muted-foreground">Contenido</Label>
