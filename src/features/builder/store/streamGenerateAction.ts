@@ -8,6 +8,8 @@ import { aiService } from '@/features/ai/aiService';
 import { generatePreviewHtml } from '@/features/builder/preview';
 import { useAuthStore } from '@/features/auth/authStore';
 import { versionsService } from '@/features/projects/versionsService';
+import { githubService } from '@/features/github/githubService';
+import { useGithubStore } from '@/features/github/githubStore';
 import type { ExtendedBuilderState } from '@/features/builder/builderTypes';
 import type { Tier } from '@/features/ai/providers/types';
 
@@ -90,6 +92,11 @@ export async function runStreamGenerate({
         previewError: null,
       });
       useAuthStore.getState().refreshProfile().catch(() => {});
+      if (projectId) {
+        autoPushToGithub(projectId, newFiles, latest.id, `chore: generate app v${latest.version_number}`).catch(
+          (e) => console.warn('[github] auto-push failed', e),
+        );
+      }
       return { ok: true };
     }
   } catch (e) {
@@ -98,4 +105,23 @@ export async function runStreamGenerate({
 
   store.setState({ streaming: false, streamBuffer: '', streamingFiles: [] });
   return { ok: false };
+}
+
+async function autoPushToGithub(
+  projectId: string,
+  files: { path: string; content: string }[],
+  versionId: string,
+  message: string,
+) {
+  const { refresh, setPushing } = useGithubStore.getState();
+  const status = useGithubStore.getState().byProject[projectId]
+    ?? (await refresh(projectId).catch(() => null));
+  if (!status?.repo || !status.repo.auto_push) return;
+  setPushing(projectId, true);
+  try {
+    await githubService.push({ projectId, files, message, versionId });
+    await refresh(projectId).catch(() => {});
+  } finally {
+    setPushing(projectId, false);
+  }
 }
