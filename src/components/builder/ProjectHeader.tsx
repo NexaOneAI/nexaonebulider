@@ -195,6 +195,25 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
+          className={`relative h-8 w-8 ${githubStatus?.repo ? 'text-primary' : ''}`}
+          onClick={() => {
+            if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+            setGithubOpen(true);
+          }}
+          title={
+            githubStatus?.repo
+              ? `GitHub: ${githubStatus.repo.owner}/${githubStatus.repo.repo}${githubStatus.repo.auto_push ? ' · auto-push ON' : ''}`
+              : 'Conectar GitHub y sincronizar repo'
+          }
+        >
+          {githubPushing ? <Loader2 className="h-4 w-4 animate-spin" /> : <GithubIcon className="h-4 w-4" />}
+          {githubStatus?.repo?.last_push_error && (
+            <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-destructive" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
           className="h-8 w-8"
           onClick={() => {
             if (!projectId) { toast.info('Abre un proyecto primero'); return; }
@@ -231,6 +250,13 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
           <DeployDialog
             open={deployOpen}
             onClose={() => setDeployOpen(false)}
+            projectId={projectId}
+            projectName={projectName}
+            files={files}
+          />
+          <GithubDialog
+            open={githubOpen}
+            onClose={() => setGithubOpen(false)}
             projectId={projectId}
             projectName={projectName}
             files={files}
