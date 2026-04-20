@@ -211,6 +211,63 @@ export type Database = {
           },
         ]
       }
+      project_github_repos: {
+        Row: {
+          auto_push: boolean
+          branch: string
+          created_at: string
+          html_url: string | null
+          id: string
+          is_private: boolean
+          last_push_error: string | null
+          last_pushed_at: string | null
+          last_pushed_sha: string | null
+          last_pushed_version_id: string | null
+          owner: string
+          project_id: string
+          repo: string
+          repo_id: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_push?: boolean
+          branch?: string
+          created_at?: string
+          html_url?: string | null
+          id?: string
+          is_private?: boolean
+          last_push_error?: string | null
+          last_pushed_at?: string | null
+          last_pushed_sha?: string | null
+          last_pushed_version_id?: string | null
+          owner: string
+          project_id: string
+          repo: string
+          repo_id?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_push?: boolean
+          branch?: string
+          created_at?: string
+          html_url?: string | null
+          id?: string
+          is_private?: boolean
+          last_push_error?: string | null
+          last_pushed_at?: string | null
+          last_pushed_sha?: string | null
+          last_pushed_version_id?: string | null
+          owner?: string
+          project_id?: string
+          repo?: string
+          repo_id?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       project_knowledge: {
         Row: {
           content: string
@@ -409,6 +466,48 @@ export type Database = {
           package_name?: string
           payment_provider?: string
           payment_status?: Database["public"]["Enums"]["payment_status"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_github_tokens: {
+        Row: {
+          access_token: string
+          created_at: string
+          github_avatar_url: string | null
+          github_login: string
+          github_user_id: number | null
+          id: string
+          refresh_token: string | null
+          scope: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          github_avatar_url?: string | null
+          github_login: string
+          github_user_id?: number | null
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          github_avatar_url?: string | null
+          github_login?: string
+          github_user_id?: number | null
+          id?: string
+          refresh_token?: string | null
+          scope?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
