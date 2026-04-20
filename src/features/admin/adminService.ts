@@ -41,4 +41,12 @@ export const adminService = {
     if (error) throw error;
     return data.success;
   },
+
+  async toggleWebContainers(userId: string, enabled: boolean): Promise<boolean> {
+    const { data, error } = await supabase.functions.invoke('admin-actions', {
+      body: { action: 'toggle_webcontainers', userId, enabled },
+    });
+    if (error) throw error;
+    return data.success;
+  },
 };

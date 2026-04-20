@@ -19,6 +19,7 @@ import {
   getSandbox,
   setSandbox,
   subscribeSandbox,
+  isWebContainersAvailable,
   type SandboxKind,
 } from '@/features/builder/sandboxPrefs';
 import { useEffect } from 'react';
@@ -67,14 +68,25 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
       toast.info('Abre un proyecto primero');
       return;
     }
-    const next: SandboxKind = sandbox === 'iframe' ? 'sandpack' : 'iframe';
+    const wcEnabled = profile?.webcontainers_enabled === true;
+    // Cycle: iframe → sandpack → (webcontainer if flag) → iframe
+    let next: SandboxKind;
+    if (sandbox === 'iframe') next = 'sandpack';
+    else if (sandbox === 'sandpack' && wcEnabled) next = 'webcontainer';
+    else next = 'iframe';
+
+    if (next === 'webcontainer' && !isWebContainersAvailable()) {
+      toast.error('WebContainers requiere COOP/COEP. Recarga /builder y reintenta.');
+      next = 'iframe';
+    }
     setSandbox(projectId, next);
     setSandboxState(next);
-    toast.success(
-      next === 'sandpack'
-        ? 'Sandpack activado · HMR + URL bar + router'
-        : 'iframe rápido (Sucrase + esm.sh)',
-    );
+    const labels: Record<SandboxKind, string> = {
+      iframe: 'iframe rápido (Sucrase + esm.sh)',
+      sandpack: 'Sandpack activado · HMR + URL bar + router',
+      webcontainer: 'WebContainer · Node.js + npm + Vite real',
+    };
+    toast.success(labels[next]);
   };
 
   const handleExport = async () => {

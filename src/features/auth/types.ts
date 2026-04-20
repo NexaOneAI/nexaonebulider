@@ -8,6 +8,7 @@ export interface Profile {
   plan: Plan;
   credits: number;
   is_unlimited: boolean;
+  webcontainers_enabled: boolean;
   created_at: string;
 }
 

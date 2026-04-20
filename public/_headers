@@ -1,0 +1,11 @@
+# Cross-Origin Isolation headers required by @webcontainer/api.
+# Scoped to /builder/* so that the rest of the app (auth, dashboard,
+# Google avatars, GitHub OAuth popup) keeps working without crossorigin
+# attribute changes.
+#
+# These apply on Lovable's preview hosting (Cloudflare Workers) and on
+# Netlify production deployments — both honor `public/_headers`.
+/builder/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp
+  Cross-Origin-Resource-Policy: cross-origin

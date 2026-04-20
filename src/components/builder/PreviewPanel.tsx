@@ -30,6 +30,9 @@ import {
 const SandpackPreview = lazy(() =>
   import('./SandpackPreview').then((m) => ({ default: m.SandpackPreview })),
 );
+const WebContainerPreview = lazy(() =>
+  import('./WebContainerPreview').then((m) => ({ default: m.WebContainerPreview })),
+);
 
 export function PreviewPanel() {
   const { previewCode, viewMode, selectedFile, files } = useBuilder();
@@ -349,6 +352,16 @@ export function PreviewPanel() {
                   }
                 >
                   <SandpackPreview files={files} projectName="Preview" showNavigator />
+                </Suspense>
+              ) : sandbox === 'webcontainer' && files.length > 0 ? (
+                <Suspense
+                  fallback={
+                    <div className="flex h-full items-center justify-center rounded-lg border border-border/50 bg-card text-sm text-muted-foreground shadow-elevated">
+                      Cargando WebContainer…
+                    </div>
+                  }
+                >
+                  <WebContainerPreview files={files} projectName="Preview" />
                 </Suspense>
               ) : previewCode ? (
                 <PreviewFrame frame={frame}>
