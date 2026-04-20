@@ -50,8 +50,11 @@ export function VisualEditPopover({ iframeRect }: Props) {
   const selected = useVisualEditsStore((s) => s.selected);
   const setSelected = useVisualEditsStore((s) => s.setSelected);
   const applyChange = useVisualEditsStore((s) => s.applyChange);
+  const sendPrompt = useBuilderStore((s) => s.sendPrompt);
+  const loading = useBuilderStore((s) => s.loading);
   const [textValue, setTextValue] = useState('');
   const [attrDraft, setAttrDraft] = useState<Record<string, string>>({});
+  const [aiPrompt, setAiPrompt] = useState('');
 
   // Sync local state when selection changes
   useEffect(() => {
