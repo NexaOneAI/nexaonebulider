@@ -361,7 +361,7 @@ export function PreviewPanel() {
                     </div>
                   }
                 >
-                  <WebContainerPreview files={files} projectName="Preview" />
+                  <WebContainerPreview files={files} projectName="Preview" projectId={projectId} />
                 </Suspense>
               ) : previewCode ? (
                 <PreviewFrame frame={frame}>
