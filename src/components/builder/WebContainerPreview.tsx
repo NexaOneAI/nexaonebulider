@@ -8,7 +8,7 @@
  * a higher level (PreviewPanel) before this component is mounted.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Terminal as TerminalIcon, RotateCw, AlertCircle } from 'lucide-react';
+import { Loader2, Terminal as TerminalIcon, RotateCw, AlertCircle, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   startWebContainer,
@@ -17,23 +17,30 @@ import {
   subscribeWC,
   subscribeWCLogs,
   getWCSnapshot,
+  clearWCCache,
+  getCurrentProjectKey,
   type WCSnapshot,
   type WCLog,
 } from '@/features/builder/webcontainerService';
 import { isWebContainersAvailable } from '@/features/builder/sandboxPrefs';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
+import { WebContainerTerminal } from './WebContainerTerminal';
 
 interface Props {
   files: GeneratedFile[];
   projectName: string;
+  projectId?: string;
 }
 
-export function WebContainerPreview({ files, projectName }: Props) {
+export function WebContainerPreview({ files, projectName, projectId }: Props) {
   const [snap, setSnap] = useState<WCSnapshot>(getWCSnapshot());
   const [logs, setLogs] = useState<WCLog[]>([]);
-  const [showLogs, setShowLogs] = useState(false);
+  const [bottomTab, setBottomTab] = useState<'none' | 'logs' | 'terminal'>('none');
   const filesRef = useRef(files);
   filesRef.current = files;
+
+  const isolated = typeof window !== 'undefined' && Boolean((window as unknown as { crossOriginIsolated?: boolean }).crossOriginIsolated);
+  const hasSAB = typeof SharedArrayBuffer !== 'undefined';
 
   // Subscribe to status + logs
   useEffect(() => {
@@ -54,7 +61,7 @@ export function WebContainerPreview({ files, projectName }: Props) {
       return;
     }
     if (snap.status === 'idle') {
-      startWebContainer(projectName, filesRef.current).catch(() => {
+      startWebContainer(projectName, filesRef.current, projectId).catch(() => {
         /* error already captured in snapshot */
       });
     }
@@ -102,7 +109,14 @@ export function WebContainerPreview({ files, projectName }: Props) {
   const restart = async () => {
     await teardownWebContainer();
     setLogs([]);
-    startWebContainer(projectName, filesRef.current).catch(() => {});
+    startWebContainer(projectName, filesRef.current, projectId).catch(() => {});
+  };
+
+  const wipeCacheAndRestart = async () => {
+    await teardownWebContainer();
+    await clearWCCache(getCurrentProjectKey() ?? undefined);
+    setLogs([]);
+    startWebContainer(projectName, filesRef.current, projectId).catch(() => {});
   };
 
   return (
@@ -119,15 +133,46 @@ export function WebContainerPreview({ files, projectName }: Props) {
         {snap.url && (
           <span className="ml-2 truncate font-mono text-[10px] text-muted-foreground">{snap.url}</span>
         )}
+        <span
+          className={`ml-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-semibold ${
+            isolated && hasSAB ? 'bg-primary/15 text-primary' : 'bg-destructive/15 text-destructive'
+          }`}
+          title={`crossOriginIsolated: ${isolated ? '✓' : '✗'} · SharedArrayBuffer: ${hasSAB ? '✓' : '✗'}`}
+        >
+          {isolated && hasSAB ? <ShieldCheck className="h-2.5 w-2.5" /> : <ShieldAlert className="h-2.5 w-2.5" />}
+          COI {isolated ? '✓' : '✗'} · SAB {hasSAB ? '✓' : '✗'}
+        </span>
         <div className="ml-auto flex items-center gap-1">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 px-2 text-[10px]"
-            onClick={() => setShowLogs((v) => !v)}
+            className={`h-6 px-2 text-[10px] ${bottomTab === 'logs' ? 'bg-muted' : ''}`}
+            onClick={() => setBottomTab((v) => (v === 'logs' ? 'none' : 'logs'))}
           >
             <TerminalIcon className="mr-1 h-3 w-3" />
             Logs ({logs.length})
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-6 px-2 text-[10px] ${bottomTab === 'terminal' ? 'bg-muted' : ''}`}
+            onClick={() => setBottomTab((v) => (v === 'terminal' ? 'none' : 'terminal'))}
+            disabled={snap.status !== 'ready'}
+            title={snap.status !== 'ready' ? 'Disponible cuando WC esté ready' : 'Terminal interactiva (jsh)'}
+          >
+            <TerminalIcon className="mr-1 h-3 w-3" />
+            Terminal
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-[10px]"
+            onClick={wipeCacheAndRestart}
+            disabled={snap.status === 'booting' || snap.status === 'installing'}
+            title="Borra el snapshot cacheado y vuelve a hacer npm install limpio"
+          >
+            <Trash2 className="mr-1 h-3 w-3" />
+            Limpiar cache
           </Button>
           <Button
             variant="ghost"
@@ -175,7 +220,7 @@ export function WebContainerPreview({ files, projectName }: Props) {
           )}
         </div>
 
-        {showLogs && (
+        {bottomTab === 'logs' && (
           <div className="h-48 overflow-auto border-t border-border/50 bg-foreground/95 p-2 font-mono text-[11px] text-background">
             {logs.length === 0 ? (
               <div className="text-muted-foreground">Sin logs todavía…</div>
@@ -195,6 +240,12 @@ export function WebContainerPreview({ files, projectName }: Props) {
                 </div>
               ))
             )}
+          </div>
+        )}
+
+        {bottomTab === 'terminal' && snap.status === 'ready' && (
+          <div className="h-64 overflow-hidden border-t border-border/50 bg-[#0a0b10] p-1">
+            <WebContainerTerminal />
           </div>
         )}
       </div>

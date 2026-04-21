@@ -182,15 +182,28 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 ${sandbox === 'sandpack' ? 'text-primary' : ''}`}
+          className={`relative h-8 w-8 ${sandbox !== 'iframe' ? 'text-primary' : ''}`}
           onClick={toggleSandbox}
           title={
-            sandbox === 'sandpack'
-              ? 'Sandbox: Sandpack (HMR + router). Click para volver a iframe rápido.'
-              : 'Sandbox: iframe rápido. Click para activar Sandpack (HMR + router).'
+            sandbox === 'webcontainer'
+              ? 'Sandbox: WebContainer (Node real). Click para volver a iframe.'
+              : sandbox === 'sandpack'
+              ? 'Sandbox: Sandpack (HMR + router). Click para WebContainer o iframe.'
+              : 'Sandbox: iframe rápido. Click para activar Sandpack.'
           }
         >
           <Boxes className="h-4 w-4" />
+          <span
+            className={`absolute -bottom-0.5 -right-0.5 rounded px-1 text-[8px] font-bold leading-tight ${
+              sandbox === 'webcontainer'
+                ? 'bg-accent text-accent-foreground'
+                : sandbox === 'sandpack'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground'
+            }`}
+          >
+            {sandbox === 'webcontainer' ? 'WC' : sandbox === 'sandpack' ? 'SP' : 'IF'}
+          </span>
         </Button>
         <Button
           variant="ghost"
