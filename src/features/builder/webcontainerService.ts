@@ -17,6 +17,7 @@
 import type { WebContainer, FileSystemTree } from '@webcontainer/api';
 import { buildScaffoldFiles } from './projectScaffoldClient';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
+import { openDB, type IDBPDatabase } from 'idb';
 
 export type WCStatus =
   | 'idle'
@@ -48,6 +49,52 @@ let snapshot: WCSnapshot = { status: 'idle', url: null, error: null };
 const listeners = new Set<Listener>();
 const logListeners = new Set<LogListener>();
 let devProcessRef: { kill: () => void } | null = null;
+let currentProjectKey: string | null = null;
+
+// ---------- IndexedDB snapshot cache (skips npm install on second boot) ----------
+const DB_NAME = 'lovable-wc-cache';
+const STORE = 'snapshots';
+const SCHEMA_VERSION = 1;
+
+async function getDB(): Promise<IDBPDatabase> {
+  return openDB(DB_NAME, SCHEMA_VERSION, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(STORE)) {
+        db.createObjectStore(STORE);
+      }
+    },
+  });
+}
+
+async function loadCachedSnapshot(key: string): Promise<Uint8Array | null> {
+  try {
+    const db = await getDB();
+    const data = (await db.get(STORE, key)) as Uint8Array | undefined;
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveSnapshot(key: string, data: Uint8Array): Promise<void> {
+  try {
+    const db = await getDB();
+    await db.put(STORE, data, key);
+  } catch (e) {
+    emitLog({ kind: 'stderr', line: `[wc] cache save failed: ${e}` });
+  }
+}
+
+export async function clearWCCache(projectKey?: string): Promise<void> {
+  try {
+    const db = await getDB();
+    if (projectKey) await db.delete(STORE, projectKey);
+    else await db.clear(STORE);
+    emitLog({ kind: 'system', line: `[wc] cache cleared${projectKey ? ` for ${projectKey}` : ''}` });
+  } catch {
+    /* ignore */
+  }
+}
 
 function setSnapshot(patch: Partial<WCSnapshot>) {
   snapshot = { ...snapshot, ...patch };
@@ -156,22 +203,48 @@ async function streamProcess(
 export async function startWebContainer(
   projectName: string,
   files: GeneratedFile[],
+  projectId?: string,
 ): Promise<{ url: string }> {
   try {
     const wc = await boot();
+    const cacheKey = projectId ? `proj:${projectId}` : `name:${projectName}`;
+    currentProjectKey = cacheKey;
 
     setSnapshot({ status: 'mounting', error: null });
-    emitLog({ kind: 'system', line: '[wc] mounting Vite scaffold + user files…' });
-    const scaffold = buildScaffoldFiles(projectName, files);
-    const tree = toFileSystemTree(scaffold);
-    await wc.mount(tree);
+    const cached = await loadCachedSnapshot(cacheKey);
+    if (cached) {
+      emitLog({ kind: 'system', line: `[wc] restoring cached snapshot (${(cached.byteLength / 1024 / 1024).toFixed(1)} MB) — skipping npm install` });
+      // The WebContainer.mount API accepts a Uint8Array snapshot when isSnapshot:true is implied via type.
+      await wc.mount(cached as unknown as ArrayBuffer);
+      // Overwrite user src with latest files so edits are reflected
+      const scaffold = buildScaffoldFiles(projectName, files);
+      for (const f of scaffold) {
+        const dir = f.path.split('/').slice(0, -1).join('/');
+        if (dir) await wc.fs.mkdir(dir, { recursive: true }).catch(() => {});
+        await wc.fs.writeFile(f.path, f.content).catch(() => {});
+      }
+    } else {
+      emitLog({ kind: 'system', line: '[wc] mounting Vite scaffold + user files…' });
+      const scaffold = buildScaffoldFiles(projectName, files);
+      const tree = toFileSystemTree(scaffold);
+      await wc.mount(tree);
 
-    setSnapshot({ status: 'installing' });
-    emitLog({ kind: 'system', line: '[wc] running `npm install`…' });
-    const install = await wc.spawn('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error']);
-    const exitCode = await streamProcess(install, '[npm]');
-    if (exitCode !== 0) {
-      throw new Error(`npm install exited with code ${exitCode}`);
+      setSnapshot({ status: 'installing' });
+      emitLog({ kind: 'system', line: '[wc] running `npm install`…' });
+      const install = await wc.spawn('npm', ['install', '--no-audit', '--no-fund', '--loglevel=error']);
+      const exitCode = await streamProcess(install, '[npm]');
+      if (exitCode !== 0) {
+        throw new Error(`npm install exited with code ${exitCode}`);
+      }
+      // Snapshot AFTER install completes — captures node_modules
+      try {
+        emitLog({ kind: 'system', line: '[wc] saving snapshot to IndexedDB for future boots…' });
+        const exported = await (wc as unknown as { export: (path: string, options?: { format?: string }) => Promise<Uint8Array> }).export('.', { format: 'binary' });
+        await saveSnapshot(cacheKey, exported);
+        emitLog({ kind: 'system', line: `[wc] snapshot cached (${(exported.byteLength / 1024 / 1024).toFixed(1)} MB)` });
+      } catch (e) {
+        emitLog({ kind: 'stderr', line: `[wc] snapshot export failed (continuing without cache): ${e}` });
+      }
     }
 
     setSnapshot({ status: 'starting' });
@@ -229,6 +302,7 @@ export async function teardownWebContainer(): Promise<void> {
     /* ignore */
   }
   devProcessRef = null;
+  currentProjectKey = null;
   if (instance) {
     try {
       // teardown() exists on @webcontainer/api ≥1.0
@@ -241,4 +315,18 @@ export async function teardownWebContainer(): Promise<void> {
   bootPromise = null;
   setSnapshot({ status: 'idle', url: null, error: null });
   emitLog({ kind: 'system', line: '[wc] torn down' });
+}
+
+/**
+ * Spawn an interactive shell (jsh) bound to a TTY of the given size.
+ * Returns the process so the caller can pipe input/output to xterm.
+ */
+export async function spawnInteractiveShell(cols: number, rows: number) {
+  if (!instance) throw new Error('WebContainer not booted');
+  const proc = await instance.spawn('jsh', { terminal: { cols, rows } });
+  return proc;
+}
+
+export function getCurrentProjectKey(): string | null {
+  return currentProjectKey;
 }
