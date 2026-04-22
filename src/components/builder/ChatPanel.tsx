@@ -244,13 +244,10 @@ export function ChatPanel() {
         )}
       </div>
 
-      {/* Tier selector */}
-      <div className="border-t border-border/30 px-3 py-2">
-        {/* Quick actions are rendered above the tier selector but only when
-            there is generated code, so they don't compete with the empty-state
-            starter prompts. */}
-      </div>
+      {/* Contextual quick actions (only when there is code + idle). */}
       <QuickActions />
+
+      {/* Tier selector */}
       <div className="border-t border-border/30 px-3 py-2">
         <button
           type="button"
