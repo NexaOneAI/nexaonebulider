@@ -4,6 +4,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Zap, LogOut, LayoutDashboard, CreditCard, Shield, Plug, Menu } from 'lucide-react';
+import logo from '@/assets/logo.png';
 
 export function Topbar() {
   const { session, profile, signOut, isAdmin } = useAuth();
@@ -25,9 +26,13 @@ export function Topbar() {
     <nav className="sticky top-0 z-50 glass border-b border-border/50">
       <div className="container flex h-14 items-center justify-between sm:h-16">
         <Link to="/" className="flex items-center gap-2" aria-label="Inicio Nexa One">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-            <Zap className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <img
+            src={logo}
+            alt="Nexa One"
+            className="h-8 w-8 rounded-lg object-cover"
+            loading="eager"
+            decoding="async"
+          />
           <span className="text-base font-bold tracking-tight sm:text-lg">Nexa One</span>
         </Link>
 
@@ -82,9 +87,7 @@ export function Topbar() {
             <SheetContent side="right" className="w-[85vw] max-w-xs p-0">
               <div className="flex h-full flex-col">
                 <div className="flex items-center gap-2 border-b border-border/50 p-4">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-                    <Zap className="h-4 w-4 text-primary-foreground" />
-                  </div>
+                  <img src={logo} alt="Nexa One" className="h-8 w-8 rounded-lg object-cover" />
                   <span className="font-bold">Nexa One</span>
                 </div>
                 <nav className="flex flex-1 flex-col gap-1 p-3">

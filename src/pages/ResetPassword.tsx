@@ -5,7 +5,8 @@ import { clearAppState } from '@/features/auth/clearAppState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 
 export default function ResetPassword() {
@@ -117,9 +118,7 @@ export default function ResetPassword() {
       <div className="relative w-full max-w-md rounded-2xl border border-border/50 bg-card p-8 shadow-elevated">
         <div className="mb-8 text-center">
           <div className="mb-4 inline-flex items-center gap-2">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-primary">
-              <Zap className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <img src={logo} alt="Nexa One" className="h-12 w-12 rounded-xl object-cover" />
           </div>
           <h1 className="text-2xl font-bold">Nueva contraseña</h1>
           <p className="mt-1 text-sm text-muted-foreground">
