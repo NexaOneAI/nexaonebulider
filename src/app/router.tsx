@@ -18,6 +18,7 @@ const Connectors = lazy(() => import('@/pages/Connectors'));
 const Admin = lazy(() => import('@/pages/Admin'));
 const SharedPreview = lazy(() => import('@/pages/SharedPreview'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
+const Pos = lazy(() => import('@/pages/Pos'));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -43,6 +44,7 @@ export function AppRouter() {
           <Route path="/connectors" element={<ProtectedRoute><Connectors /></ProtectedRoute>} />
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/share/:token" element={<SharedPreview />} />
+          <Route path="/pos" element={<Pos />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
