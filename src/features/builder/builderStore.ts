@@ -65,6 +65,15 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
     setSelectedFile: (file) => set({ selectedFile: file, highlightLine: null }),
     setShowCode: (show) => set({ showCode: show }),
     setHighlightLine: (line) => set({ highlightLine: line }),
+    updateFileContent: (path: string, content: string) =>
+      set((s) => {
+        const files = s.files.map((f) => (f.path === path ? { ...f, content } : f));
+        const selectedFile =
+          s.selectedFile && s.selectedFile.path === path
+            ? { ...s.selectedFile, content }
+            : s.selectedFile;
+        return { files, selectedFile };
+      }),
     toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
     toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
 
