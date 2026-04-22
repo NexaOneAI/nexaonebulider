@@ -50,6 +50,8 @@ export interface BuilderActions {
   setSelectedFile: (file: GeneratedFile | null) => void;
   setShowCode: (show: boolean) => void;
   setHighlightLine: (line: number | null) => void;
+  /** Live edit a file's content (used by the editor → triggers WC HMR). */
+  updateFileContent: (path: string, content: string) => void;
   toggleSidebar: () => void;
   toggleChat: () => void;
   sendPrompt: (prompt: string, tierOverride?: Tier) => Promise<void>;

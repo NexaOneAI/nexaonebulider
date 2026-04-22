@@ -1,7 +1,8 @@
-import { Code2, Copy, Check } from 'lucide-react';
+import { Code2, Copy, Check, Pencil, Eye } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import { Button } from '@/components/ui/button';
+import { useBuilderStore } from '@/features/builder/builderStore';
 
 interface Props {
   file: GeneratedFile;
@@ -11,6 +12,8 @@ interface Props {
 
 export function CodeEditor({ file, highlightLine }: Props) {
   const [copied, setCopied] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const updateFileContent = useBuilderStore((s) => s.updateFileContent);
   const containerRef = useRef<HTMLDivElement>(null);
   const rowRefs = useRef<Map<number, HTMLTableRowElement>>(new Map());
 
@@ -43,10 +46,29 @@ export function CodeEditor({ file, highlightLine }: Props) {
             L{highlightLine}
           </span>
         )}
-        <Button variant="ghost" size="icon" className="ml-auto h-7 w-7" onClick={handleCopy}>
+        <Button
+          variant={editing ? 'default' : 'ghost'}
+          size="sm"
+          className="ml-auto h-7 text-xs"
+          onClick={() => setEditing((v) => !v)}
+          title={editing ? 'Salir de edición (cambios ya guardados)' : 'Editar archivo (HMR en WebContainer)'}
+        >
+          {editing ? <Eye className="mr-1 h-3 w-3" /> : <Pencil className="mr-1 h-3 w-3" />}
+          {editing ? 'Ver' : 'Editar'}
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleCopy}>
           {copied ? <Check className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5" />}
         </Button>
       </div>
+      {editing ? (
+        <textarea
+          value={file.content}
+          onChange={(e) => updateFileContent(file.path, e.target.value)}
+          spellCheck={false}
+          className="flex-1 resize-none overflow-auto bg-muted/20 p-4 font-mono text-xs leading-6 text-foreground/90 outline-none focus:bg-muted/10"
+          style={{ tabSize: 2 }}
+        />
+      ) : (
       <div ref={containerRef} className="flex-1 overflow-auto bg-muted/20">
         <table className="w-full border-collapse">
           <tbody>
@@ -78,6 +100,7 @@ export function CodeEditor({ file, highlightLine }: Props) {
           </tbody>
         </table>
       </div>
+      )}
     </div>
   );
 }

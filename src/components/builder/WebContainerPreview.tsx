@@ -8,7 +8,7 @@
  * a higher level (PreviewPanel) before this component is mounted.
  */
 import { useEffect, useRef, useState } from 'react';
-import { Loader2, Terminal as TerminalIcon, RotateCw, AlertCircle, Trash2, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Loader2, Terminal as TerminalIcon, RotateCw, AlertCircle, Trash2, ShieldCheck, ShieldAlert, Folder, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   startWebContainer,
@@ -25,6 +25,7 @@ import {
 import { isWebContainersAvailable } from '@/features/builder/sandboxPrefs';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import { WebContainerTerminal } from './WebContainerTerminal';
+import { WCFileExplorer } from './WCFileExplorer';
 
 interface Props {
   files: GeneratedFile[];
@@ -35,7 +36,8 @@ interface Props {
 export function WebContainerPreview({ files, projectName, projectId }: Props) {
   const [snap, setSnap] = useState<WCSnapshot>(getWCSnapshot());
   const [logs, setLogs] = useState<WCLog[]>([]);
-  const [bottomTab, setBottomTab] = useState<'none' | 'logs' | 'terminal'>('none');
+  const [bottomTab, setBottomTab] = useState<'none' | 'logs' | 'terminal' | 'files'>('none');
+  const [hmrTick, setHmrTick] = useState<number>(0);
   const filesRef = useRef(files);
   filesRef.current = files;
 
@@ -76,7 +78,9 @@ export function WebContainerPreview({ files, projectName, projectId }: Props) {
   // Hot-update files on changes once the dev server is ready
   useEffect(() => {
     if (snap.status !== 'ready') return;
-    writeFiles(projectName, files).catch(() => {});
+    writeFiles(projectName, files)
+      .then(() => setHmrTick((t) => t + 1))
+      .catch(() => {});
   }, [files, projectName, snap.status]);
 
   if (!isWebContainersAvailable()) {
@@ -142,7 +146,28 @@ export function WebContainerPreview({ files, projectName, projectId }: Props) {
           {isolated && hasSAB ? <ShieldCheck className="h-2.5 w-2.5" /> : <ShieldAlert className="h-2.5 w-2.5" />}
           COI {isolated ? '✓' : '✗'} · SAB {hasSAB ? '✓' : '✗'}
         </span>
+        {snap.status === 'ready' && hmrTick > 0 && (
+          <span
+            key={hmrTick}
+            className="ml-1 inline-flex animate-pulse items-center gap-1 rounded bg-accent/20 px-1.5 py-0.5 text-[9px] font-semibold text-accent-foreground"
+            title={`Último HMR push #${hmrTick}`}
+          >
+            <Zap className="h-2.5 w-2.5" />
+            HMR #{hmrTick}
+          </span>
+        )}
         <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-6 px-2 text-[10px] ${bottomTab === 'files' ? 'bg-muted' : ''}`}
+            onClick={() => setBottomTab((v) => (v === 'files' ? 'none' : 'files'))}
+            disabled={snap.status !== 'ready'}
+            title="Explorar el filesystem real del WebContainer"
+          >
+            <Folder className="mr-1 h-3 w-3" />
+            Files
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -246,6 +271,12 @@ export function WebContainerPreview({ files, projectName, projectId }: Props) {
         {bottomTab === 'terminal' && snap.status === 'ready' && (
           <div className="h-64 overflow-hidden border-t border-border/50 bg-[#0a0b10] p-1">
             <WebContainerTerminal />
+          </div>
+        )}
+
+        {bottomTab === 'files' && snap.status === 'ready' && (
+          <div className="h-72 overflow-hidden border-t border-border/50">
+            <WCFileExplorer />
           </div>
         )}
       </div>
