@@ -108,7 +108,20 @@ export default function ResetPassword() {
           </p>
         </div>
 
-        {!ready ? (
+        {linkError ? (
+          <div className="space-y-4 text-center">
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
+              <AlertCircle className="h-6 w-6 text-destructive" />
+            </div>
+            <p className="text-sm text-muted-foreground">{linkError}</p>
+            <Button asChild className="w-full bg-gradient-primary hover:opacity-90">
+              <Link to="/forgot-password">Solicitar nuevo enlace</Link>
+            </Button>
+            <Button asChild variant="ghost" className="w-full">
+              <Link to="/login">Volver al login</Link>
+            </Button>
+          </div>
+        ) : !ready ? (
           <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Validando enlace...
           </div>
