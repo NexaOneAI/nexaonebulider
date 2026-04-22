@@ -7,6 +7,8 @@ import { PreviewPanel } from '@/components/builder/PreviewPanel';
 import { ChatPanel } from '@/components/builder/ChatPanel';
 import { VersionHistory } from '@/components/builder/VersionHistory';
 import { CommandPalette } from '@/components/builder/CommandPalette';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { useBuilderStore } from '@/features/builder/builderStore';
 
 export default function Builder() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -14,6 +16,7 @@ export default function Builder() {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<'files' | 'content'>('files');
+  useAutoSave();
 
   useEffect(() => {
     if (projectId) reset(projectId);
@@ -34,6 +37,9 @@ export default function Builder() {
         e.preventDefault();
         setPaletteMode('content');
         setPaletteOpen(true);
+      } else if (key === 's' && !e.shiftKey) {
+        e.preventDefault();
+        useBuilderStore.getState().saveVersion('manual').catch(() => {});
       }
     };
     window.addEventListener('keydown', onKey);
