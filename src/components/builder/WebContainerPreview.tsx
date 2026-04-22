@@ -26,6 +26,7 @@ import { isWebContainersAvailable } from '@/features/builder/sandboxPrefs';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 import { WebContainerTerminal } from './WebContainerTerminal';
 import { WCFileExplorer } from './WCFileExplorer';
+import { WCSyncBanner } from './WCSyncBanner';
 
 interface Props {
   files: GeneratedFile[];
@@ -214,6 +215,7 @@ export function WebContainerPreview({ files, projectName, projectId }: Props) {
 
       {/* Main area: iframe (when ready) + log drawer */}
       <div className="flex min-h-0 flex-1 flex-col">
+        <WCSyncBanner />
         <div className="relative flex min-h-0 flex-1 bg-background">
           {snap.status === 'ready' && snap.url ? (
             <iframe
