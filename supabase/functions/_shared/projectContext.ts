@@ -175,3 +175,32 @@ export function buildProjectContext(files: ProjectFile[]): string {
   const summary = summarizeProject(files);
   return renderProjectContext(summary);
 }
+
+/**
+ * Carga el bloque de "Project Knowledge" (notas/instrucciones del usuario)
+ * desde la tabla `project_knowledge` y lo formatea para inyectarlo en el
+ * prompt del modelo. Devuelve string vacío si no hay knowledge habilitado
+ * o si la query falla — nunca lanza, para no romper el flujo de chat.
+ *
+ * Firma: (admin: SupabaseClient, projectId: string) => Promise<string>
+ * Tolerante: usa `any` para el cliente porque las edge functions importan
+ * Supabase desde npm:/esm sin tipos compartidos.
+ */
+// deno-lint-ignore no-explicit-any
+export async function loadProjectKnowledge(admin: any, projectId: string): Promise<string> {
+  if (!admin || !projectId) return "";
+  try {
+    const { data, error } = await admin
+      .from("project_knowledge")
+      .select("content, enabled")
+      .eq("project_id", projectId)
+      .maybeSingle();
+    if (error || !data) return "";
+    if (data.enabled === false) return "";
+    const content = String(data.content || "").trim();
+    if (!content) return "";
+    return `\n## Project Knowledge (instrucciones persistentes del usuario)\n${content}\n`;
+  } catch {
+    return "";
+  }
+}
