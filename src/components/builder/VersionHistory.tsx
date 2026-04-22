@@ -221,6 +221,14 @@ export function VersionHistory({ open, onClose }: Props) {
                           <GitBranch className="h-2.5 w-2.5" />
                           diff · {v.editsMeta?.applied ?? 0}b
                         </span>
+                      ) : isCheckpoint(v) ? (
+                        <span
+                          className="flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-foreground/70"
+                          title={v.model_used === 'manual-save' ? 'Checkpoint manual' : 'Auto-save'}
+                        >
+                          <Save className="h-2.5 w-2.5" />
+                          {v.model_used === 'manual-save' ? 'manual' : 'auto'}
+                        </span>
                       ) : (
                         <span className="flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           <FileText className="h-2.5 w-2.5" />
