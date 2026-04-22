@@ -24,4 +24,4 @@ export const DEFAULT_PRODUCTS: PosProduct[] = [
   { id: 'p10', name: 'Pizza Slice', price: 55, emoji: '🍕', category: 'Comida' },
   { id: 'p11', name: 'Ensalada', price: 75, emoji: '🥗', category: 'Comida' },
   { id: 'p12', name: 'Brownie', price: 30, emoji: '🍫', category: 'Postres' },
-};
+];
