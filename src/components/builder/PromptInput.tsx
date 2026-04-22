@@ -21,6 +21,17 @@ export function PromptInput({ onSend, disabled }: Props) {
 
   const mode: 'create' | 'edit' = filesCount > 0 ? 'edit' : 'create';
 
+  // Hydrate from onboarding seed prompt (set by OnboardingFlow before navigating).
+  useEffect(() => {
+    if (!projectId) return;
+    const key = `seedPrompt:${projectId}`;
+    const seed = sessionStorage.getItem(key);
+    if (seed) {
+      setValue(seed);
+      sessionStorage.removeItem(key);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     if (debounceRef.current) window.clearTimeout(debounceRef.current);
     if (value.trim().length < 4) {

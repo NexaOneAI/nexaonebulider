@@ -5,10 +5,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { useProjects } from '@/hooks/useProjects';
 import { Button } from '@/components/ui/button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { Zap, Clock, Folder, ArrowRight, Sparkles } from 'lucide-react';
+import { Zap, Clock, Folder, ArrowRight, Sparkles, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
 import { TemplateGallery } from '@/components/templates/TemplateGallery';
+import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
@@ -17,6 +19,7 @@ export default function Dashboard() {
   const { projects } = useProjects();
   const navigate = useNavigate();
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const { open: onboardingOpen, setOpen: setOnboardingOpen, reopen, refresh } = useOnboarding();
 
   return (
     <AppShell>
@@ -52,6 +55,9 @@ export default function Dashboard() {
           <Button className="bg-gradient-primary hover:opacity-90" onClick={() => setGalleryOpen(true)}>
             <Sparkles className="mr-2 h-4 w-4" /> Nuevo proyecto
           </Button>
+          <Button variant="outline" onClick={reopen}>
+            <HelpCircle className="mr-2 h-4 w-4" /> Ver tour inicial
+          </Button>
         </div>
 
         <h2 className="mb-4 text-xl font-semibold">Proyectos recientes</h2>
@@ -81,6 +87,11 @@ export default function Dashboard() {
         )}
       </div>
       <TemplateGallery open={galleryOpen} onOpenChange={setGalleryOpen} />
+      <OnboardingFlow
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+        onCompleted={refresh}
+      />
     </AppShell>
   );
 }
