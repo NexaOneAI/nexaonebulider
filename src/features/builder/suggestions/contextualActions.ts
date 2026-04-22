@@ -16,6 +16,30 @@ export interface QuickAction {
   prompt: string;
   /** Visual tone for the button. */
   tone?: 'primary' | 'accent' | 'muted';
+  /** Optional lucide icon name (resolved in the UI). */
+  icon?:
+    | 'sparkles'
+    | 'shield'
+    | 'database'
+    | 'smartphone'
+    | 'rocket'
+    | 'github'
+    | 'layout-dashboard'
+    | 'search'
+    | 'image'
+    | 'chart'
+    | 'shopping-cart'
+    | 'package'
+    | 'history'
+    | 'users'
+    | 'credit-card'
+    | 'palette'
+    | 'zap';
+  /**
+   * Optional UI action to run instead of (or in addition to) sending a prompt.
+   * Lets a button open a dialog (GitHub, Deploy, etc.) when that's the right UX.
+   */
+  uiAction?: 'open-github' | 'open-deploy' | 'open-knowledge' | 'open-share';
 }
 
 /**
@@ -46,9 +70,34 @@ export function detectAppKind(projectName: string, files: GeneratedFile[]): AppK
 /** Always-useful actions, regardless of app type. */
 const BASE_ACTIONS: QuickAction[] = [
   {
+    id: 'pwa',
+    label: 'Activar PWA',
+    tone: 'accent',
+    icon: 'smartphone',
+    prompt:
+      'Convierte la app en PWA instalable: agrega manifest.webmanifest con íconos e información del negocio, registra un service worker (solo en producción, deshabilitado en iframes/preview), y añade meta tags para "Add to Home Screen" en iOS y Android.',
+  },
+  {
+    id: 'admin-panel',
+    label: 'Agregar panel admin',
+    tone: 'primary',
+    icon: 'layout-dashboard',
+    prompt:
+      'Agrega un panel de administración protegido por rol: crea tabla user_roles separada con enum app_role, función has_role security definer, ruta /admin con guard, y vista de gestión de usuarios y métricas básicas.',
+  },
+  {
+    id: 'seo',
+    label: 'Mejorar SEO',
+    tone: 'muted',
+    icon: 'search',
+    prompt:
+      'Optimiza SEO: title <60 chars con keyword, meta description <160 chars, un solo H1, HTML semántico, alt text en imágenes, JSON-LD, canonical y viewport responsive.',
+  },
+  {
     id: 'mobile',
     label: 'Optimizar para móvil',
     tone: 'muted',
+    icon: 'smartphone',
     prompt:
       'Revisa toda la app y mejora la experiencia móvil: usa breakpoints de Tailwind correctamente, asegura que los botones sean tappables (mínimo 44px), arregla overflows, y verifica que los modales se conviertan en sheets en pantallas pequeñas.',
   },
@@ -56,6 +105,7 @@ const BASE_ACTIONS: QuickAction[] = [
     id: 'auth',
     label: 'Agregar autenticación',
     tone: 'primary',
+    icon: 'shield',
     prompt:
       'Agrega autenticación con email y contraseña usando Supabase: pantalla de login, registro, logout, y proteger las rutas privadas. Crea tabla profiles con trigger para autocrearla en signup.',
   },
@@ -63,15 +113,33 @@ const BASE_ACTIONS: QuickAction[] = [
     id: 'database',
     label: 'Conectar base de datos',
     tone: 'primary',
+    icon: 'database',
     prompt:
       'Identifica los datos que la app necesita persistir y crea las tablas correspondientes en Supabase con RLS estricto por user_id. Reemplaza cualquier estado en memoria o localStorage por consultas reales.',
+  },
+  {
+    id: 'github',
+    label: 'Conectar GitHub',
+    tone: 'muted',
+    icon: 'github',
+    prompt: '',
+    uiAction: 'open-github',
   },
   {
     id: 'deploy-ready',
     label: 'Preparar para deploy',
     tone: 'accent',
+    icon: 'rocket',
     prompt:
       'Revisa la app y déjala lista para producción: limpia console.logs, valida que el build pase, asegura SPA routing correcto, agrega meta tags SEO básicos y verifica que las variables de entorno estén bien usadas.',
+  },
+  {
+    id: 'deploy-now',
+    label: 'Desplegar ahora',
+    tone: 'accent',
+    icon: 'rocket',
+    prompt: '',
+    uiAction: 'open-deploy',
   },
 ];
 
