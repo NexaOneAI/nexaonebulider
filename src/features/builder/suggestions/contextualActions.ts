@@ -16,6 +16,30 @@ export interface QuickAction {
   prompt: string;
   /** Visual tone for the button. */
   tone?: 'primary' | 'accent' | 'muted';
+  /** Optional lucide icon name (resolved in the UI). */
+  icon?:
+    | 'sparkles'
+    | 'shield'
+    | 'database'
+    | 'smartphone'
+    | 'rocket'
+    | 'github'
+    | 'layout-dashboard'
+    | 'search'
+    | 'image'
+    | 'chart'
+    | 'shopping-cart'
+    | 'package'
+    | 'history'
+    | 'users'
+    | 'credit-card'
+    | 'palette'
+    | 'zap';
+  /**
+   * Optional UI action to run instead of (or in addition to) sending a prompt.
+   * Lets a button open a dialog (GitHub, Deploy, etc.) when that's the right UX.
+   */
+  uiAction?: 'open-github' | 'open-deploy' | 'open-knowledge' | 'open-share';
 }
 
 /**
@@ -46,9 +70,34 @@ export function detectAppKind(projectName: string, files: GeneratedFile[]): AppK
 /** Always-useful actions, regardless of app type. */
 const BASE_ACTIONS: QuickAction[] = [
   {
+    id: 'pwa',
+    label: 'Activar PWA',
+    tone: 'accent',
+    icon: 'smartphone',
+    prompt:
+      'Convierte la app en PWA instalable: agrega manifest.webmanifest con íconos e información del negocio, registra un service worker (solo en producción, deshabilitado en iframes/preview), y añade meta tags para "Add to Home Screen" en iOS y Android.',
+  },
+  {
+    id: 'admin-panel',
+    label: 'Agregar panel admin',
+    tone: 'primary',
+    icon: 'layout-dashboard',
+    prompt:
+      'Agrega un panel de administración protegido por rol: crea tabla user_roles separada con enum app_role, función has_role security definer, ruta /admin con guard, y vista de gestión de usuarios y métricas básicas.',
+  },
+  {
+    id: 'seo',
+    label: 'Mejorar SEO',
+    tone: 'muted',
+    icon: 'search',
+    prompt:
+      'Optimiza SEO: title <60 chars con keyword, meta description <160 chars, un solo H1, HTML semántico, alt text en imágenes, JSON-LD, canonical y viewport responsive.',
+  },
+  {
     id: 'mobile',
     label: 'Optimizar para móvil',
     tone: 'muted',
+    icon: 'smartphone',
     prompt:
       'Revisa toda la app y mejora la experiencia móvil: usa breakpoints de Tailwind correctamente, asegura que los botones sean tappables (mínimo 44px), arregla overflows, y verifica que los modales se conviertan en sheets en pantallas pequeñas.',
   },
@@ -56,6 +105,7 @@ const BASE_ACTIONS: QuickAction[] = [
     id: 'auth',
     label: 'Agregar autenticación',
     tone: 'primary',
+    icon: 'shield',
     prompt:
       'Agrega autenticación con email y contraseña usando Supabase: pantalla de login, registro, logout, y proteger las rutas privadas. Crea tabla profiles con trigger para autocrearla en signup.',
   },
@@ -63,15 +113,33 @@ const BASE_ACTIONS: QuickAction[] = [
     id: 'database',
     label: 'Conectar base de datos',
     tone: 'primary',
+    icon: 'database',
     prompt:
       'Identifica los datos que la app necesita persistir y crea las tablas correspondientes en Supabase con RLS estricto por user_id. Reemplaza cualquier estado en memoria o localStorage por consultas reales.',
+  },
+  {
+    id: 'github',
+    label: 'Conectar GitHub',
+    tone: 'muted',
+    icon: 'github',
+    prompt: '',
+    uiAction: 'open-github',
   },
   {
     id: 'deploy-ready',
     label: 'Preparar para deploy',
     tone: 'accent',
+    icon: 'rocket',
     prompt:
       'Revisa la app y déjala lista para producción: limpia console.logs, valida que el build pase, asegura SPA routing correcto, agrega meta tags SEO básicos y verifica que las variables de entorno estén bien usadas.',
+  },
+  {
+    id: 'deploy-now',
+    label: 'Desplegar ahora',
+    tone: 'accent',
+    icon: 'rocket',
+    prompt: '',
+    uiAction: 'open-deploy',
   },
 ];
 
@@ -82,19 +150,29 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'cta-section',
       label: 'Agregar sección de CTA',
       tone: 'primary',
+      icon: 'sparkles',
       prompt: 'Añade una sección de call-to-action prominente antes del footer con un formulario de captura de email.',
     },
     {
       id: 'pricing',
       label: 'Agregar tabla de precios',
       tone: 'accent',
+      icon: 'credit-card',
       prompt: 'Agrega una sección de pricing con 3 planes (Free, Pro, Enterprise), comparativa de features y botón de upgrade.',
     },
     {
       id: 'testimonials',
       label: 'Agregar testimonios',
       tone: 'muted',
+      icon: 'users',
       prompt: 'Añade una sección de testimonios con avatares, nombre, rol y quote, en grid responsive.',
+    },
+    {
+      id: 'animations',
+      label: 'Agregar animaciones',
+      tone: 'muted',
+      icon: 'palette',
+      prompt: 'Añade animaciones sutiles tipo Apple: fade-in al hacer scroll con IntersectionObserver, hover states con transitions suaves, y un hero con parallax ligero.',
     },
   ],
   dashboard: [
@@ -170,13 +248,29 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'filters',
       label: 'Filtros avanzados',
       tone: 'primary',
+      icon: 'search',
       prompt: 'Agrega filtros laterales por categoría, rango de precio y rating.',
     },
     {
       id: 'product-detail',
       label: 'Página de producto',
       tone: 'accent',
+      icon: 'package',
       prompt: 'Crea página de detalle de producto con galería, descripción, reviews y botón de comprar.',
+    },
+    {
+      id: 'sellers',
+      label: 'Perfiles de vendedores',
+      tone: 'muted',
+      icon: 'users',
+      prompt: 'Agrega perfiles públicos de vendedores con avatar, descripción, rating promedio y listado de sus productos.',
+    },
+    {
+      id: 'payments',
+      label: 'Integrar pagos',
+      tone: 'accent',
+      icon: 'credit-card',
+      prompt: 'Agrega checkout con integración de pagos (Stripe o MercadoPago) usando edge functions seguras y webhook para confirmar la orden.',
     },
   ],
   saas: [
@@ -184,13 +278,22 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'workspaces',
       label: 'Multi-tenant',
       tone: 'primary',
+      icon: 'users',
       prompt: 'Agrega soporte multi-workspace: cada usuario puede crear y unirse a workspaces, con datos aislados por RLS.',
     },
     {
       id: 'billing',
       label: 'Planes y billing',
       tone: 'accent',
+      icon: 'credit-card',
       prompt: 'Agrega pantalla de billing con plan actual, comparativa y botón de upgrade.',
+    },
+    {
+      id: 'saas-dashboard',
+      label: 'Dashboard de cuenta',
+      tone: 'muted',
+      icon: 'layout-dashboard',
+      prompt: 'Agrega dashboard de cuenta con métricas de uso, miembros del workspace y quick actions de configuración.',
     },
   ],
 };
@@ -201,6 +304,7 @@ export function getQuickActions(projectName: string, files: GeneratedFile[]): {
 } {
   const kind = detectAppKind(projectName, files);
   const specific = KIND_ACTIONS[kind] ?? [];
-  // Specific first, then base — capped to 6 to avoid noise.
-  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 6) };
+  // Specific first, then base. We return up to 12 — the bar shows the first
+  // few inline and tucks the rest behind a "Más" popover.
+  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 12) };
 }
