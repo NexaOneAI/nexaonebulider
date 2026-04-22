@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Loader2, AlertCircle } from 'lucide-react';
+import { Zap, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResetPassword() {
@@ -13,6 +13,8 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
@@ -84,13 +86,26 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success('Contraseña actualizada correctamente');
-      navigate('/dashboard');
+      // Sign out so the user logs in fresh with the new password.
+      await supabase.auth.signOut();
+      setSuccess(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al actualizar la contraseña');
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-redirect to login after success
+  useEffect(() => {
+    if (!success) return;
+    if (countdown <= 0) {
+      navigate('/login');
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [success, countdown, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
@@ -108,7 +123,25 @@ export default function ResetPassword() {
           </p>
         </div>
 
-        {linkError ? (
+        {success ? (
+          <div className="space-y-5 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle2 className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-lg font-semibold">¡Contraseña actualizada!</h2>
+              <p className="text-sm text-muted-foreground">
+                Tu contraseña se cambió correctamente. Ya puedes iniciar sesión con la nueva.
+              </p>
+            </div>
+            <Button asChild className="w-full bg-gradient-primary hover:opacity-90">
+              <Link to="/login">Ir al login ahora</Link>
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Te redirigiremos automáticamente en {countdown}s...
+            </p>
+          </div>
+        ) : linkError ? (
           <div className="space-y-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertCircle className="h-6 w-6 text-destructive" />
