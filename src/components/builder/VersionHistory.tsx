@@ -258,6 +258,16 @@ export function VersionHistory({ open, onClose }: Props) {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => setDiffTarget(v)}
+                          disabled={isCurrent}
+                          title="Comparar con versión actual"
+                        >
+                          <GitCompare className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="h-6 px-2 text-[10px]"
                           disabled={restoringId === v.id || isCurrent}
                           onClick={() => handleRestore(v)}
@@ -327,6 +337,77 @@ export function VersionHistory({ open, onClose }: Props) {
           </div>
         </div>
       )}
+
+      {/* Diff visual entre versión seleccionada y estado actual */}
+      <VersionDiffModal
+        open={!!diffTarget}
+        onClose={() => setDiffTarget(null)}
+        fromLabel={diffTarget ? `v${diffTarget.version_number}` : ''}
+        toLabel="actual"
+        fromFiles={diffTarget?.generated_files ?? []}
+        toFiles={currentFiles}
+      />
+
+      {/* Confirmación antes de restaurar (rollback seguro) */}
+      <AlertDialog
+        open={!!pendingRestore}
+        onOpenChange={(o) => !o && setPendingRestore(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-primary" />
+              Restaurar v{pendingRestore?.version_number}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Esta acción reemplazará los archivos actuales con la versión{' '}
+                <strong>v{pendingRestore?.version_number}</strong> del{' '}
+                {pendingRestore &&
+                  new Date(pendingRestore.created_at).toLocaleString('es-MX')}
+                .
+              </span>
+              {dirty && (
+                <span className="block rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
+                  ⚠️ Tienes cambios sin guardar. Activa el checkpoint para no perderlos.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded border border-border/50 bg-muted/30 p-3 text-xs">
+            <input
+              type="checkbox"
+              checked={createCheckpoint}
+              onChange={(e) => setCreateCheckpoint(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-primary"
+            />
+            <span className="flex-1">
+              <span className="flex items-center gap-1 font-medium">
+                <Save className="h-3 w-3" />
+                Crear checkpoint del estado actual antes de restaurar
+              </span>
+              <span className="mt-0.5 block text-muted-foreground">
+                Recomendado — te permite volver atrás si la restauración no era lo que buscabas.
+              </span>
+            </span>
+          </label>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!restoringId}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!!restoringId}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmRestore();
+              }}
+            >
+              <HardDriveDownload className="mr-1.5 h-3.5 w-3.5" />
+              {restoringId ? 'Restaurando…' : 'Restaurar ahora'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
