@@ -133,6 +133,60 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
       });
     },
 
+    loadProject: async (projectId: string) => {
+      // Reset state but keep the projectId so the UI binds to the right route.
+      set({ ...initialState, projectId });
+
+      // Load project metadata, latest version, and chat history in parallel.
+      const [projectRes, versionRes, messagesRes] = await Promise.all([
+        supabase
+          .from('projects')
+          .select('id, name')
+          .eq('id', projectId)
+          .maybeSingle(),
+        supabase
+          .from('project_versions')
+          .select('id, generated_files, model_used, created_at, version_number')
+          .eq('project_id', projectId)
+          .order('version_number', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        supabase
+          .from('ai_messages')
+          .select('id, project_id, role, content, model, created_at')
+          .eq('project_id', projectId)
+          .order('created_at', { ascending: true }),
+      ]);
+
+      const projectName = projectRes.data?.name ?? get().projectName;
+      const messages = (messagesRes.data ?? []) as AIMessage[];
+
+      // No version yet: brand new project — keep empty files but hydrate name + chat.
+      if (!versionRes.data) {
+        set({
+          projectName,
+          messages,
+          mode: 'create',
+        });
+        return;
+      }
+
+      const files = (versionRes.data.generated_files as unknown as GeneratedFile[]) || [];
+      const previewCode = generatePreviewHtml(files, projectName, versionRes.data.model_used);
+
+      set({
+        projectName,
+        files,
+        previewCode,
+        selectedFile: files[0] || null,
+        messages,
+        mode: files.length > 0 ? 'edit' : 'create',
+        dirty: false,
+        saveStatus: 'saved',
+        lastSavedAt: versionRes.data.created_at ?? new Date().toISOString(),
+      });
+    },
+
     saveVersion: async (trigger, note) => {
       const { projectId, files } = get();
       if (!projectId) {
