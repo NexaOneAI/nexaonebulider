@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Loader2, AlertCircle } from 'lucide-react';
+import { Zap, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResetPassword() {
@@ -13,6 +13,8 @@ export default function ResetPassword() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
