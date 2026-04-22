@@ -1,0 +1,4 @@
+# SPA fallback for client-side routing on Netlify.
+# OAuth callback must hit network (not be intercepted by SW or fallback).
+/~oauth/*  /~oauth/:splat  200
+/*         /index.html     200

@@ -28,6 +28,21 @@ No uses triple backticks.
 
 Genera una app React + Vite + TypeScript.
 
+REGLAS DE DISEÑO OBLIGATORIAS:
+- Mobile-first y responsive: usa clases Tailwind sm: md: lg: para escalar.
+  Layouts deben verse perfectos en 360px de ancho. Nunca scroll horizontal.
+- Botones y áreas táctiles: min 44x44px (h-11 w-11 mínimo en mobile).
+- Texto base 16px, headings escalan: text-2xl md:text-4xl, text-base md:text-lg.
+- Containers: usa "container mx-auto px-4 sm:px-6" — nunca anchos fijos.
+- Grid responsive: "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3".
+- Forms en mobile: inputs full-width, labels arriba, padding generoso.
+- Navigation: hamburger menu (Sheet) en <md, navbar horizontal en md+.
+- Imágenes con loading="lazy" y alt descriptivo.
+- Accesibilidad: aria-label en botones-icono, focus-visible rings, contraste AA.
+
+PWA-READY: incluye en index.html los meta tags theme-color, apple-mobile-web-app-capable
+y viewport correctos. Si el usuario pide PWA completa, agrega public/manifest.webmanifest.
+
 Formato obligatorio:
 {
   "projectName": "string",

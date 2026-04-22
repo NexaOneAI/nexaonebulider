@@ -57,6 +57,10 @@ No uses triple backticks.
 
 Genera una app React + Vite + TypeScript.
 
+REGLAS DE DISEÑO: Mobile-first responsive (Tailwind sm: md: lg:). 360px sin
+scroll horizontal. Áreas táctiles min 44x44px. "container mx-auto px-4 sm:px-6".
+Hamburger menu en mobile. aria-labels y alt en imágenes.
+
 Formato obligatorio:
 {
   "projectName": "string",
