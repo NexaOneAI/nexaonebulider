@@ -515,6 +515,39 @@ export type Database = {
         }
         Relationships: []
       }
+      user_onboarding: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          id: string
+          updated_at: string
+          user_id: string
+          welcome_credits_granted: boolean
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          updated_at?: string
+          user_id: string
+          welcome_credits_granted?: boolean
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          updated_at?: string
+          user_id?: string
+          welcome_credits_granted?: boolean
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -541,6 +574,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      grant_welcome_credits: {
+        Args: { _amount?: number; _user_id: string }
+        Returns: Json
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
