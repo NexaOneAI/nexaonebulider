@@ -28,6 +28,7 @@ import {
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
 import { createLovableEditStream } from "../_shared/providers/lovable-edit-stream.ts";
 import { sse, makeSafeController } from "../_shared/providers/_sse-utils.ts";
+// Re-import bump to force redeploy after adding loadProjectKnowledge to shared module.
 import { buildProjectContext, loadProjectKnowledge } from "../_shared/projectContext.ts";
 import { classifyImageIntent } from "../_shared/imageIntent.ts";
 

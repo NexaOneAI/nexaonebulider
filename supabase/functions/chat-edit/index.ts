@@ -10,6 +10,7 @@ import {
   type Tier,
 } from "../_shared/credits.ts";
 import { parseSearchReplaceText, applyEdits } from "../_shared/searchReplace.ts";
+// Re-import bump to force redeploy after adding loadProjectKnowledge to shared module.
 import { buildProjectContext, loadProjectKnowledge } from "../_shared/projectContext.ts";
 import { classifyImageIntent } from "../_shared/imageIntent.ts";
 
