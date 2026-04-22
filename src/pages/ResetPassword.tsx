@@ -86,13 +86,26 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success('Contraseña actualizada correctamente');
-      navigate('/dashboard');
+      // Sign out so the user logs in fresh with the new password.
+      await supabase.auth.signOut();
+      setSuccess(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al actualizar la contraseña');
     } finally {
       setLoading(false);
     }
   };
+
+  // Auto-redirect to login after success
+  useEffect(() => {
+    if (!success) return;
+    if (countdown <= 0) {
+      navigate('/login');
+      return;
+    }
+    const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [success, countdown, navigate]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background">
