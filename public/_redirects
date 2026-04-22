@@ -1,4 +1,9 @@
 # SPA fallback for client-side routing on Netlify.
 # OAuth callback must hit network (not be intercepted by SW or fallback).
 /~oauth/*  /~oauth/:splat  200
+# Service worker & manifest must hit the real files, never the SPA fallback.
+/sw.js              /sw.js               200
+/registerSW.js      /registerSW.js       200
+/manifest.webmanifest  /manifest.webmanifest  200
+/workbox-*.js       /workbox-:splat.js   200
 /*         /index.html     200
