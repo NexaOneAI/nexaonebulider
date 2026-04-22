@@ -16,6 +16,9 @@ import { runStreamGenerate } from './store/streamGenerateAction';
 import { runStreamEdit } from './store/streamEditAction';
 import { usePreviewErrorsStore, buildFixPrompt } from './previewErrorsStore';
 import { getChatCutoff } from './chatCutoff';
+import { manualSaveService } from '@/features/projects/manualSaveService';
+import { autoPushToGithub } from '@/features/github/autoPush';
+import { toast } from 'sonner';
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   projectName: 'Mi proyecto',
@@ -40,6 +43,9 @@ const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   streamingFiles: [],
   streamingBlocks: {},
   highlightLine: null,
+  dirty: false,
+  saveStatus: 'idle',
+  lastSavedAt: null,
 };
 
 export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((set, get) => {
