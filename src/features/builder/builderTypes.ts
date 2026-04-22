@@ -40,6 +40,12 @@ export interface ExtendedBuilderState extends BuilderState {
   streamingBlocks: Record<string, number>;
   /** 1-indexed line to highlight & scroll to in the CodeEditor (search jump) */
   highlightLine: number | null;
+  /** True when the in-memory files differ from the last persisted version */
+  dirty: boolean;
+  /** Save lifecycle for the header indicator */
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error';
+  /** ISO timestamp of the last successful manual/auto save */
+  lastSavedAt: string | null;
 }
 
 export interface BuilderActions {
@@ -59,4 +65,6 @@ export interface BuilderActions {
   setPreviewError: (err: PreviewError | null) => void;
   fixWithAI: (errorId?: string) => Promise<void>;
   reset: (projectId: string) => void;
+  /** Persist current files as a new project_versions row (checkpoint). */
+  saveVersion: (trigger: 'manual' | 'auto', note?: string) => Promise<void>;
 }

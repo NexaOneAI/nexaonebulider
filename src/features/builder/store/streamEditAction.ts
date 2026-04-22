@@ -176,6 +176,9 @@ export async function runStreamEdit({
       lastTier: done.tier,
       tier: null,
       previewError: null,
+      dirty: false,
+      saveStatus: 'saved',
+      lastSavedAt: new Date().toISOString(),
       messages: s.messages.map((m) =>
         m.id === assistantMsgId
           ? {

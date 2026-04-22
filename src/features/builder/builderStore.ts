@@ -16,6 +16,9 @@ import { runStreamGenerate } from './store/streamGenerateAction';
 import { runStreamEdit } from './store/streamEditAction';
 import { usePreviewErrorsStore, buildFixPrompt } from './previewErrorsStore';
 import { getChatCutoff } from './chatCutoff';
+import { manualSaveService } from '@/features/projects/manualSaveService';
+import { autoPushToGithub } from '@/features/github/autoPush';
+import { toast } from 'sonner';
 
 const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   projectName: 'Mi proyecto',
@@ -40,6 +43,9 @@ const initialState: Omit<ExtendedBuilderState, 'projectId'> = {
   streamingFiles: [],
   streamingBlocks: {},
   highlightLine: null,
+  dirty: false,
+  saveStatus: 'idle',
+  lastSavedAt: null,
 };
 
 export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((set, get) => {
@@ -72,7 +78,7 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
           s.selectedFile && s.selectedFile.path === path
             ? { ...s.selectedFile, content }
             : s.selectedFile;
-        return { files, selectedFile };
+        return { files, selectedFile, dirty: true, saveStatus: 'idle' };
       }),
     toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
     toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
@@ -121,7 +127,56 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
         previewCode,
         selectedFile: files[0] || null,
         mode: 'edit',
+        dirty: false,
+        saveStatus: 'saved',
+        lastSavedAt: data.created_at ?? new Date().toISOString(),
       });
+    },
+
+    saveVersion: async (trigger, note) => {
+      const { projectId, files } = get();
+      if (!projectId) {
+        toast.error('No hay proyecto activo');
+        return;
+      }
+      if (files.length === 0) {
+        toast.info('Genera o edita una app primero');
+        return;
+      }
+      // Skip auto-saves when there are no pending changes
+      if (trigger === 'auto' && !get().dirty) return;
+
+      set({ saveStatus: 'saving' });
+      const tid = trigger === 'manual' ? toast.loading('Guardando versión…') : null;
+      try {
+        const { versionId, versionNumber } = await manualSaveService.save({
+          projectId,
+          files,
+          trigger,
+          note,
+        });
+        set({
+          dirty: false,
+          saveStatus: 'saved',
+          lastSavedAt: new Date().toISOString(),
+        });
+        if (tid) toast.success(`Versión v${versionNumber} guardada`, { id: tid });
+
+        // Auto-push to GitHub only on manual saves (per user preference).
+        if (trigger === 'manual') {
+          autoPushToGithub(
+            projectId,
+            files,
+            versionId,
+            `chore: manual checkpoint v${versionNumber}${note ? ` — ${note}` : ''}`,
+          ).catch((e) => console.warn('[github] auto-push (manual save) failed', e));
+        }
+      } catch (err) {
+        set({ saveStatus: 'error' });
+        const msg = err instanceof Error ? err.message : 'Error al guardar';
+        if (tid) toast.error(msg, { id: tid });
+        else toast.error(`Auto-save falló: ${msg}`);
+      }
     },
 
     sendPrompt: async (prompt, tierOverride) => {
@@ -231,6 +286,9 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
           lastTier: meta?.tier || null,
           tier: null,
           previewError: null,
+          dirty: false,
+          saveStatus: 'saved',
+          lastSavedAt: new Date().toISOString(),
         }));
 
         useAuthStore.getState().refreshProfile().catch(() => {});
