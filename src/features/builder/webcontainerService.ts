@@ -330,3 +330,40 @@ export async function spawnInteractiveShell(cols: number, rows: number) {
 export function getCurrentProjectKey(): string | null {
   return currentProjectKey;
 }
+
+/**
+ * Recursive file-tree listing of the WebContainer filesystem.
+ * Used by the file explorer panel to surface the *real* state (including
+ * node_modules, dist, generated artifacts, etc).
+ */
+export interface WCFsNode {
+  name: string;
+  path: string;
+  isDir: boolean;
+  children?: WCFsNode[];
+}
+
+export async function listWCDir(path = '/'): Promise<WCFsNode[]> {
+  if (!instance) return [];
+  try {
+    const entries = await instance.fs.readdir(path, { withFileTypes: true });
+    return entries
+      .map((e) => ({
+        name: e.name,
+        path: path === '/' ? `/${e.name}` : `${path}/${e.name}`,
+        isDir: e.isDirectory(),
+      }))
+      .sort((a, b) => Number(b.isDir) - Number(a.isDir) || a.name.localeCompare(b.name));
+  } catch {
+    return [];
+  }
+}
+
+export async function readWCFile(path: string): Promise<string | null> {
+  if (!instance) return null;
+  try {
+    return await instance.fs.readFile(path, 'utf-8');
+  } catch {
+    return null;
+  }
+}
