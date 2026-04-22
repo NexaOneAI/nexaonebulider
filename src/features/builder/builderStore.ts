@@ -286,6 +286,9 @@ export const useBuilderStore = create<ExtendedBuilderState & BuilderActions>((se
           lastTier: meta?.tier || null,
           tier: null,
           previewError: null,
+          dirty: false,
+          saveStatus: 'saved',
+          lastSavedAt: new Date().toISOString(),
         }));
 
         useAuthStore.getState().refreshProfile().catch(() => {});
