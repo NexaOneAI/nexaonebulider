@@ -23,6 +23,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useBuilderStore } from '@/features/builder/builderStore';
+import { GithubDialog } from './GithubDialog';
+import { DeployDialog } from './DeployDialog';
+import { KnowledgeDialog } from './KnowledgeDialog';
 import {
   getQuickActions,
   type QuickAction,
@@ -69,17 +72,6 @@ const KIND_LABELS: Record<string, string> = {
   unknown: 'App',
 };
 
-interface Props {
-  /** Open the GitHub dialog (UI action). */
-  onOpenGithub?: () => void;
-  /** Open the deploy dialog (UI action). */
-  onOpenDeploy?: () => void;
-  /** Open the knowledge dialog (UI action). */
-  onOpenKnowledge?: () => void;
-  /** Open the share dialog (UI action). */
-  onOpenShare?: () => void;
-}
-
 /**
  * Contextual quick-actions bar shown directly under the project header.
  * Detects what the user is building and renders 4 inline buttons + a
@@ -88,20 +80,19 @@ interface Props {
  * Deploy). This is the "copilot strip" that makes Nexa One feel
  * proactive instead of just a chat.
  */
-export function QuickActionsBar({
-  onOpenGithub,
-  onOpenDeploy,
-  onOpenKnowledge,
-  onOpenShare,
-}: Props) {
+export function QuickActionsBar() {
   const files = useBuilderStore((s) => s.files);
   const projectName = useBuilderStore((s) => s.projectName);
+  const projectId = useBuilderStore((s) => s.projectId);
   const loading = useBuilderStore((s) => s.loading);
   const streaming = useBuilderStore((s) => s.streaming);
   const sendPrompt = useBuilderStore((s) => s.sendPrompt);
   const toggleChat = useBuilderStore((s) => s.toggleChat);
   const chatOpen = useBuilderStore((s) => s.chatOpen);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [githubOpen, setGithubOpen] = useState(false);
+  const [deployOpen, setDeployOpen] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
   const { kind, actions } = useMemo(
     () => getQuickActions(projectName, files),
@@ -117,19 +108,23 @@ export function QuickActionsBar({
 
   const runAction = (action: QuickAction) => {
     if (action.uiAction === 'open-github') {
-      onOpenGithub?.();
+      if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+      setGithubOpen(true);
       return;
     }
     if (action.uiAction === 'open-deploy') {
-      onOpenDeploy?.();
+      if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+      if (files.length === 0) { toast.info('Genera una app primero'); return; }
+      setDeployOpen(true);
       return;
     }
     if (action.uiAction === 'open-knowledge') {
-      onOpenKnowledge?.();
+      if (!projectId) { toast.info('Abre un proyecto primero'); return; }
+      setKnowledgeOpen(true);
       return;
     }
     if (action.uiAction === 'open-share') {
-      onOpenShare?.();
+      toast.info('Usa el botón de compartir en el header');
       return;
     }
     if (busy) {
@@ -214,6 +209,30 @@ export function QuickActionsBar({
             </div>
           </PopoverContent>
         </Popover>
+      )}
+
+      {projectId && (
+        <>
+          <GithubDialog
+            open={githubOpen}
+            onClose={() => setGithubOpen(false)}
+            projectId={projectId}
+            projectName={projectName}
+            files={files}
+          />
+          <DeployDialog
+            open={deployOpen}
+            onClose={() => setDeployOpen(false)}
+            projectId={projectId}
+            projectName={projectName}
+            files={files}
+          />
+          <KnowledgeDialog
+            open={knowledgeOpen}
+            onClose={() => setKnowledgeOpen(false)}
+            projectId={projectId}
+          />
+        </>
       )}
     </div>
   );
