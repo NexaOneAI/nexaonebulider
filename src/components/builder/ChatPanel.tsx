@@ -5,6 +5,7 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
+import { QuickActions } from './QuickActions';
 import {
   Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity, X, MessageSquarePlus,
 } from 'lucide-react';
@@ -244,6 +245,12 @@ export function ChatPanel() {
       </div>
 
       {/* Tier selector */}
+      <div className="border-t border-border/30 px-3 py-2">
+        {/* Quick actions are rendered above the tier selector but only when
+            there is generated code, so they don't compete with the empty-state
+            starter prompts. */}
+      </div>
+      <QuickActions />
       <div className="border-t border-border/30 px-3 py-2">
         <button
           type="button"
