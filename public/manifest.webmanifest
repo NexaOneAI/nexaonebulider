@@ -1,0 +1,16 @@
+{
+  "name": "Nexa One Builder",
+  "short_name": "Nexa One",
+  "description": "AI App Builder — Crea aplicaciones completas con IA",
+  "theme_color": "#0a0b10",
+  "background_color": "#0a0b10",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "lang": "es",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
