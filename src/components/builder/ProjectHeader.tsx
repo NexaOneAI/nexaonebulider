@@ -165,12 +165,12 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
           {saveStatus === 'saving' ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : saveStatus === 'saved' && !dirty ? (
-            <Check className="h-4 w-4 text-emerald-500" />
+            <Check className="h-4 w-4 text-success" />
           ) : (
-            <Save className={`h-4 w-4 ${dirty ? 'text-amber-500' : ''}`} />
+            <Save className={`h-4 w-4 ${dirty ? 'text-warning' : ''}`} />
           )}
           {dirty && saveStatus !== 'saving' && (
-            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-card" />
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-warning ring-2 ring-card" />
           )}
           {saveStatus === 'error' && (
             <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-card" />
