@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, Loader2 } from 'lucide-react';
+import { Zap, Loader2, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ResetPassword() {
@@ -12,11 +12,39 @@ export default function ResetPassword() {
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState<string | null>(null);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    // Supabase sends a recovery link that sets a temporary session via URL hash.
-    // onAuthStateChange will fire with PASSWORD_RECOVERY when the link is opened.
+    // Detect errors returned by Supabase in the URL hash (e.g. expired/used token)
+    const hash = window.location.hash;
+    if (hash.includes('error=')) {
+      const params = new URLSearchParams(hash.replace(/^#/, ''));
+      const errCode = params.get('error_code');
+      const errDesc = params.get('error_description');
+      if (errCode === 'otp_expired' || errDesc?.includes('expired')) {
+        setLinkError('El enlace de recuperación expiró o ya fue utilizado. Solicita uno nuevo.');
+      } else {
+        setLinkError(errDesc?.replace(/\+/g, ' ') ?? 'El enlace no es válido.');
+      }
+      return;
+    }
+
+    // Handle PKCE flow: ?code=... in query string
+    const code = searchParams.get('code');
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
+        if (error) {
+          setLinkError('El enlace de recuperación expiró o ya fue utilizado. Solicita uno nuevo.');
+        } else {
+          setReady(true);
+        }
+      });
+      return;
+    }
+
+    // Implicit flow: token comes via URL hash, supabase-js parses it automatically.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         setReady(true);
@@ -28,8 +56,18 @@ export default function ResetPassword() {
       if (data.session) setReady(true);
     });
 
-    return () => subscription.unsubscribe();
-  }, []);
+    // If after 1.5s nothing resolved and no hash present, show a clearer message
+    const timer = setTimeout(() => {
+      if (!hash && !code) {
+        setLinkError('No se detectó un enlace de recuperación válido. Solicita uno nuevo desde "¿Olvidaste tu contraseña?".');
+      }
+    }, 1500);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timer);
+    };
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
