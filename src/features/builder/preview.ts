@@ -59,7 +59,8 @@ export function generatePreviewHtml(
   for (const f of sourceFiles) {
     const normalised = normalisePath(f.path);
     const isJsx = f.path.endsWith('.tsx') || f.path.endsWith('.jsx');
-    const annotated = isJsx ? annotateJsxWithDataLoc(f.content, f.path) : f.content;
+    const sanitized = sanitizeLucideIcons(f.content);
+    const annotated = isJsx ? annotateJsxWithDataLoc(sanitized, f.path) : sanitized;
     moduleMap.set(normalised, transpileSafe(annotated, f.path));
   }
 
@@ -502,4 +503,54 @@ function escapeHtml(text: string): string {
 
 function escapeJs(text: string): string {
   return text.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+/**
+ * Common AI hallucinations: singular/wrong icon names from lucide-react that
+ * don't actually exist. Map them to their correct exported names so the
+ * preview doesn't crash with `does not provide an export named 'X'`.
+ */
+const LUCIDE_ICON_ALIASES: Record<string, string> = {
+  Scissor: 'Scissors',
+  Cog: 'Settings',
+  Gear: 'Settings',
+  Trash: 'Trash2',
+  Edit: 'Pencil',
+  Close: 'X',
+  Cross: 'X',
+  Tick: 'Check',
+  Magnifier: 'Search',
+  Loading: 'Loader2',
+  Spinner: 'Loader2',
+};
+
+/**
+ * Rewrite incorrect lucide-react named imports and JSX usages in-place.
+ * Only touches identifiers that match the alias map exactly (whole word).
+ */
+function sanitizeLucideIcons(src: string): string {
+  if (!/lucide-react/.test(src)) return src;
+  let out = src;
+  // Rewrite the import specifier list: `import { Scissor, Foo as Bar } from 'lucide-react'`
+  out = out.replace(
+    /import\s*\{([^}]+)\}\s*from\s*(['"])lucide-react\2/g,
+    (_m, names: string, q: string) => {
+      const fixed = names
+        .split(',')
+        .map((part) => {
+          const trimmed = part.trim();
+          if (!trimmed) return part;
+          // Handle `Original as Alias`
+          const asMatch = trimmed.match(/^([A-Za-z0-9_$]+)(\s+as\s+[A-Za-z0-9_$]+)?$/);
+          if (!asMatch) return part;
+          const original = asMatch[1];
+          const aliasPart = asMatch[2] || '';
+          const replacement = LUCIDE_ICON_ALIASES[original];
+          return replacement ? ` ${replacement}${aliasPart || ` as ${original}`}` : part;
+        })
+        .join(',');
+      return `import {${fixed}} from ${q}lucide-react${q}`;
+    },
+  );
+  return out;
 }
