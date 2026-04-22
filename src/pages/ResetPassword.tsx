@@ -123,7 +123,25 @@ export default function ResetPassword() {
           </p>
         </div>
 
-        {linkError ? (
+        {success ? (
+          <div className="space-y-5 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
+              <CheckCircle2 className="h-7 w-7 text-primary" />
+            </div>
+            <div className="space-y-1.5">
+              <h2 className="text-lg font-semibold">¡Contraseña actualizada!</h2>
+              <p className="text-sm text-muted-foreground">
+                Tu contraseña se cambió correctamente. Ya puedes iniciar sesión con la nueva.
+              </p>
+            </div>
+            <Button asChild className="w-full bg-gradient-primary hover:opacity-90">
+              <Link to="/login">Ir al login ahora</Link>
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Te redirigiremos automáticamente en {countdown}s...
+            </p>
+          </div>
+        ) : linkError ? (
           <div className="space-y-4 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
               <AlertCircle className="h-6 w-6 text-destructive" />
