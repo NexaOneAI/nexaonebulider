@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock, RotateCcw, X, Check, GitBranch, FileText, Sparkles, Eye } from 'lucide-react';
+import {
+  Clock,
+  RotateCcw,
+  X,
+  Check,
+  GitBranch,
+  FileText,
+  Sparkles,
+  Eye,
+  GitCompare,
+  Save,
+  HardDriveDownload,
+} from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
@@ -8,6 +20,17 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import { generatePreviewHtml } from '@/features/builder/preview';
 import { AI_MODEL_LABELS } from '@/lib/constants';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { VersionDiffModal } from './VersionDiffModal';
 
 interface Props {
   open: boolean;
@@ -29,15 +52,25 @@ function classifyVersion(v: ProjectVersion): VersionType {
   return 'full';
 }
 
+function isCheckpoint(v: ProjectVersion): boolean {
+  return v.model_used === 'manual-save' || v.model_used === 'auto-save';
+}
+
 export function VersionHistory({ open, onClose }: Props) {
   const projectId = useBuilderStore((s) => s.projectId);
   const projectName = useBuilderStore((s) => s.projectName);
   const loadVersion = useBuilderStore((s) => s.loadVersion);
+  const currentFiles = useBuilderStore((s) => s.files);
+  const dirty = useBuilderStore((s) => s.dirty);
+  const saveVersion = useBuilderStore((s) => s.saveVersion);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [filter, setFilter] = useState<VersionType>('all');
   const [previewing, setPreviewing] = useState<ProjectVersion | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<ProjectVersion | null>(null);
+  const [diffTarget, setDiffTarget] = useState<ProjectVersion | null>(null);
+  const [createCheckpoint, setCreateCheckpoint] = useState(true);
 
   useEffect(() => {
     if (!open || !projectId) return;
@@ -71,10 +104,29 @@ export function VersionHistory({ open, onClose }: Props) {
   }, [previewing, projectName]);
 
   const handleRestore = async (version: ProjectVersion) => {
+    // Always go through the confirmation dialog — restoring is destructive.
+    setPendingRestore(version);
+    // Default: create a checkpoint if there are unsaved changes.
+    setCreateCheckpoint(dirty);
+  };
+
+  const confirmRestore = async () => {
+    const version = pendingRestore;
+    if (!version) return;
     setRestoringId(version.id);
     try {
+      // Git-like rollback: snapshot current state before overwriting.
+      if (createCheckpoint && currentFiles.length > 0) {
+        try {
+          await saveVersion('manual', `Pre-restore backup (antes de v${version.version_number})`);
+        } catch (e) {
+          console.warn('[restore] checkpoint failed', e);
+          toast.warning('No se pudo crear el checkpoint, restaurando igual');
+        }
+      }
       await loadVersion(version.id);
-      toast.success(`Versión ${version.version_number} restaurada`);
+      toast.success(`Restaurado a v${version.version_number}`);
+      setPendingRestore(null);
       onClose();
     } catch {
       toast.error('No se pudo restaurar la versión');
