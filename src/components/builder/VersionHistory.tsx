@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Clock, RotateCcw, X, Check, GitBranch, FileText, Sparkles, Eye } from 'lucide-react';
+import {
+  Clock,
+  RotateCcw,
+  X,
+  Check,
+  GitBranch,
+  FileText,
+  Sparkles,
+  Eye,
+  GitCompare,
+  Save,
+  HardDriveDownload,
+} from 'lucide-react';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Loader } from '@/components/ui/Loader';
 import { Button } from '@/components/ui/button';
@@ -8,6 +20,17 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import { generatePreviewHtml } from '@/features/builder/preview';
 import { AI_MODEL_LABELS } from '@/lib/constants';
 import { toast } from 'sonner';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { VersionDiffModal } from './VersionDiffModal';
 
 interface Props {
   open: boolean;
@@ -29,15 +52,25 @@ function classifyVersion(v: ProjectVersion): VersionType {
   return 'full';
 }
 
+function isCheckpoint(v: ProjectVersion): boolean {
+  return v.model_used === 'manual-save' || v.model_used === 'auto-save';
+}
+
 export function VersionHistory({ open, onClose }: Props) {
   const projectId = useBuilderStore((s) => s.projectId);
   const projectName = useBuilderStore((s) => s.projectName);
   const loadVersion = useBuilderStore((s) => s.loadVersion);
+  const currentFiles = useBuilderStore((s) => s.files);
+  const dirty = useBuilderStore((s) => s.dirty);
+  const saveVersion = useBuilderStore((s) => s.saveVersion);
   const [versions, setVersions] = useState<ProjectVersion[]>([]);
   const [loading, setLoading] = useState(false);
   const [restoringId, setRestoringId] = useState<string | null>(null);
   const [filter, setFilter] = useState<VersionType>('all');
   const [previewing, setPreviewing] = useState<ProjectVersion | null>(null);
+  const [pendingRestore, setPendingRestore] = useState<ProjectVersion | null>(null);
+  const [diffTarget, setDiffTarget] = useState<ProjectVersion | null>(null);
+  const [createCheckpoint, setCreateCheckpoint] = useState(true);
 
   useEffect(() => {
     if (!open || !projectId) return;
@@ -71,10 +104,29 @@ export function VersionHistory({ open, onClose }: Props) {
   }, [previewing, projectName]);
 
   const handleRestore = async (version: ProjectVersion) => {
+    // Always go through the confirmation dialog — restoring is destructive.
+    setPendingRestore(version);
+    // Default: create a checkpoint if there are unsaved changes.
+    setCreateCheckpoint(dirty);
+  };
+
+  const confirmRestore = async () => {
+    const version = pendingRestore;
+    if (!version) return;
     setRestoringId(version.id);
     try {
+      // Git-like rollback: snapshot current state before overwriting.
+      if (createCheckpoint && currentFiles.length > 0) {
+        try {
+          await saveVersion('manual', `Pre-restore backup (antes de v${version.version_number})`);
+        } catch (e) {
+          console.warn('[restore] checkpoint failed', e);
+          toast.warning('No se pudo crear el checkpoint, restaurando igual');
+        }
+      }
       await loadVersion(version.id);
-      toast.success(`Versión ${version.version_number} restaurada`);
+      toast.success(`Restaurado a v${version.version_number}`);
+      setPendingRestore(null);
       onClose();
     } catch {
       toast.error('No se pudo restaurar la versión');
@@ -169,6 +221,14 @@ export function VersionHistory({ open, onClose }: Props) {
                           <GitBranch className="h-2.5 w-2.5" />
                           diff · {v.editsMeta?.applied ?? 0}b
                         </span>
+                      ) : isCheckpoint(v) ? (
+                        <span
+                          className="flex items-center gap-0.5 rounded bg-secondary px-1.5 py-0.5 text-[10px] text-foreground/70"
+                          title={v.model_used === 'manual-save' ? 'Checkpoint manual' : 'Auto-save'}
+                        >
+                          <Save className="h-2.5 w-2.5" />
+                          {v.model_used === 'manual-save' ? 'manual' : 'auto'}
+                        </span>
                       ) : (
                         <span className="flex items-center gap-0.5 rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
                           <FileText className="h-2.5 w-2.5" />
@@ -202,6 +262,16 @@ export function VersionHistory({ open, onClose }: Props) {
                           title="Vista previa sin restaurar"
                         >
                           <Eye className="h-2.5 w-2.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 px-1.5 text-[10px]"
+                          onClick={() => setDiffTarget(v)}
+                          disabled={isCurrent}
+                          title="Comparar con versión actual"
+                        >
+                          <GitCompare className="h-2.5 w-2.5" />
                         </Button>
                         <Button
                           variant="ghost"
@@ -275,6 +345,77 @@ export function VersionHistory({ open, onClose }: Props) {
           </div>
         </div>
       )}
+
+      {/* Diff visual entre versión seleccionada y estado actual */}
+      <VersionDiffModal
+        open={!!diffTarget}
+        onClose={() => setDiffTarget(null)}
+        fromLabel={diffTarget ? `v${diffTarget.version_number}` : ''}
+        toLabel="actual"
+        fromFiles={diffTarget?.generated_files ?? []}
+        toFiles={currentFiles}
+      />
+
+      {/* Confirmación antes de restaurar (rollback seguro) */}
+      <AlertDialog
+        open={!!pendingRestore}
+        onOpenChange={(o) => !o && setPendingRestore(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-4 w-4 text-primary" />
+              Restaurar v{pendingRestore?.version_number}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <span className="block">
+                Esta acción reemplazará los archivos actuales con la versión{' '}
+                <strong>v{pendingRestore?.version_number}</strong> del{' '}
+                {pendingRestore &&
+                  new Date(pendingRestore.created_at).toLocaleString('es-MX')}
+                .
+              </span>
+              {dirty && (
+                <span className="block rounded border border-amber-500/30 bg-amber-500/10 p-2 text-amber-600 dark:text-amber-400">
+                  ⚠️ Tienes cambios sin guardar. Activa el checkpoint para no perderlos.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <label className="flex cursor-pointer items-start gap-2 rounded border border-border/50 bg-muted/30 p-3 text-xs">
+            <input
+              type="checkbox"
+              checked={createCheckpoint}
+              onChange={(e) => setCreateCheckpoint(e.target.checked)}
+              className="mt-0.5 h-3.5 w-3.5 accent-primary"
+            />
+            <span className="flex-1">
+              <span className="flex items-center gap-1 font-medium">
+                <Save className="h-3 w-3" />
+                Crear checkpoint del estado actual antes de restaurar
+              </span>
+              <span className="mt-0.5 block text-muted-foreground">
+                Recomendado — te permite volver atrás si la restauración no era lo que buscabas.
+              </span>
+            </span>
+          </label>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!restoringId}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!!restoringId}
+              onClick={(e) => {
+                e.preventDefault();
+                confirmRestore();
+              }}
+            >
+              <HardDriveDownload className="mr-1.5 h-3.5 w-3.5" />
+              {restoringId ? 'Restaurando…' : 'Restaurar ahora'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
