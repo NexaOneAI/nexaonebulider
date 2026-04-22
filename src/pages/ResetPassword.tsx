@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthStore } from '@/features/auth/authStore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +18,8 @@ export default function ResetPassword() {
   const [countdown, setCountdown] = useState(5);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const resetAuthStore = useAuthStore((s) => s.setSession);
+  const clearProfile = useAuthStore((s) => s.setProfile);
 
   useEffect(() => {
     // Detect errors returned by Supabase in the URL hash (e.g. expired/used token)
@@ -86,8 +89,24 @@ export default function ResetPassword() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       toast.success('Contraseña actualizada correctamente');
-      // Sign out so the user logs in fresh with the new password.
-      await supabase.auth.signOut();
+      // Force a clean logout: revoke server session, clear local Supabase storage,
+      // and reset the in-memory auth store so no stale user/profile remains.
+      try {
+        await supabase.auth.signOut({ scope: 'global' });
+      } catch {
+        // ignore — we still clear local state below
+      }
+      // Belt-and-suspenders: drop any sb-* tokens persisted in localStorage.
+      try {
+        Object.keys(localStorage)
+          .filter((k) => k.startsWith('sb-') || k.includes('supabase.auth'))
+          .forEach((k) => localStorage.removeItem(k));
+      } catch {
+        // localStorage may be unavailable in some contexts
+      }
+      // Reset Zustand auth store (user, session, profile)
+      resetAuthStore(null);
+      clearProfile(null);
       setSuccess(true);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Error al actualizar la contraseña');
