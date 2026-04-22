@@ -12,15 +12,22 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 
 export default function Builder() {
   const { projectId } = useParams<{ projectId: string }>();
-  const { sidebarOpen, chatOpen, reset } = useBuilder();
+  const { sidebarOpen, chatOpen } = useBuilder();
+  const loadProject = useBuilderStore((s) => s.loadProject);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteMode, setPaletteMode] = useState<'files' | 'content'>('files');
   useAutoSave();
 
   useEffect(() => {
-    if (projectId) reset(projectId);
-  }, [projectId]);
+    if (!projectId) return;
+    // Hydrate project metadata + latest version files + chat history.
+    // Without this, opening an existing project from the dashboard shows
+    // an empty builder as if it were brand new.
+    loadProject(projectId).catch((e) => {
+      console.error('[builder] failed to load project', e);
+    });
+  }, [projectId, loadProject]);
 
   // Global shortcuts: Cmd/Ctrl+P (files) and Cmd/Ctrl+Shift+F (content)
   useEffect(() => {

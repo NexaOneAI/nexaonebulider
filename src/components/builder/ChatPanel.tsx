@@ -5,6 +5,7 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import { usePreviewErrorsStore } from '@/features/builder/previewErrorsStore';
 import { PromptInput } from './PromptInput';
 import { Loader } from '@/components/ui/Loader';
+import { QuickActions } from './QuickActions';
 import {
   Bot, User, Sparkles, Zap, Gauge, AlertTriangle, Wand2, FileCode, Activity, X, MessageSquarePlus,
 } from 'lucide-react';
@@ -242,6 +243,9 @@ export function ChatPanel() {
           </div>
         )}
       </div>
+
+      {/* Contextual quick actions (only when there is code + idle). */}
+      <QuickActions />
 
       {/* Tier selector */}
       <div className="border-t border-border/30 px-3 py-2">

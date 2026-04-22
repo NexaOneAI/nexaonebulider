@@ -65,6 +65,12 @@ export interface BuilderActions {
   setPreviewError: (err: PreviewError | null) => void;
   fixWithAI: (errorId?: string) => Promise<void>;
   reset: (projectId: string) => void;
+  /**
+   * Load a project from the database: hydrates project metadata,
+   * latest version files, and chat history. Use this when entering
+   * an existing project from the dashboard so it doesn't open empty.
+   */
+  loadProject: (projectId: string) => Promise<void>;
   /** Persist current files as a new project_versions row (checkpoint). */
   saveVersion: (trigger: 'manual' | 'auto', note?: string) => Promise<void>;
 }
