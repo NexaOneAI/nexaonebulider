@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ModelSelector } from './ModelSelector';
-import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes, Brain, GitBranch as GithubIcon, Loader2 } from 'lucide-react';
+import { Save, Download, Rocket, History, PanelLeft, MessageSquare, Monitor, Tablet, Smartphone, Zap, ChevronLeft, Share2, Image as ImageIcon, Boxes, Brain, GitBranch as GithubIcon, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBuilder } from '@/hooks/useBuilder';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -38,6 +38,10 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
     chatOpen, toggleChat, files,
   } = useBuilder();
   const creditsRemaining = useBuilderStore((s) => s.creditsRemaining);
+  const dirty = useBuilderStore((s) => s.dirty);
+  const saveStatus = useBuilderStore((s) => s.saveStatus);
+  const lastSavedAt = useBuilderStore((s) => s.lastSavedAt);
+  const saveVersion = useBuilderStore((s) => s.saveVersion);
 
   const displayCredits = creditsRemaining >= 0
     ? creditsRemaining
@@ -102,8 +106,19 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
 
   const handleSave = () => {
     if (files.length === 0) { toast.info('Genera una app primero'); return; }
-    toast.success('Versión guardada automáticamente');
+    saveVersion('manual').catch(() => {});
   };
+
+  const saveTooltip = (() => {
+    if (saveStatus === 'saving') return 'Guardando…';
+    if (saveStatus === 'error') return 'Error al guardar — click para reintentar';
+    if (dirty) return 'Hay cambios sin guardar — click para crear versión (⌘S)';
+    if (lastSavedAt) {
+      const ts = new Date(lastSavedAt).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+      return `Guardado a las ${ts} (⌘S)`;
+    }
+    return 'Guardar versión (⌘S)';
+  })();
 
   return (
     <div className="flex h-12 items-center justify-between border-b border-border/50 bg-card/80 px-3 backdrop-blur-xl">
@@ -139,8 +154,27 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
           <Zap className="h-3 w-3 text-primary" />
           <span className="text-xs font-medium">{displayCredits}</span>
         </div>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSave}>
-          <Save className="h-4 w-4" />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="relative h-8 w-8"
+          onClick={handleSave}
+          disabled={saveStatus === 'saving'}
+          title={saveTooltip}
+        >
+          {saveStatus === 'saving' ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : saveStatus === 'saved' && !dirty ? (
+            <Check className="h-4 w-4 text-emerald-500" />
+          ) : (
+            <Save className={`h-4 w-4 ${dirty ? 'text-amber-500' : ''}`} />
+          )}
+          {dirty && saveStatus !== 'saving' && (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-amber-500 ring-2 ring-card" />
+          )}
+          {saveStatus === 'error' && (
+            <span className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-destructive ring-2 ring-card" />
+          )}
         </Button>
         <Button
           variant="ghost"
