@@ -150,19 +150,29 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'cta-section',
       label: 'Agregar sección de CTA',
       tone: 'primary',
+      icon: 'sparkles',
       prompt: 'Añade una sección de call-to-action prominente antes del footer con un formulario de captura de email.',
     },
     {
       id: 'pricing',
       label: 'Agregar tabla de precios',
       tone: 'accent',
+      icon: 'credit-card',
       prompt: 'Agrega una sección de pricing con 3 planes (Free, Pro, Enterprise), comparativa de features y botón de upgrade.',
     },
     {
       id: 'testimonials',
       label: 'Agregar testimonios',
       tone: 'muted',
+      icon: 'users',
       prompt: 'Añade una sección de testimonios con avatares, nombre, rol y quote, en grid responsive.',
+    },
+    {
+      id: 'animations',
+      label: 'Agregar animaciones',
+      tone: 'muted',
+      icon: 'palette',
+      prompt: 'Añade animaciones sutiles tipo Apple: fade-in al hacer scroll con IntersectionObserver, hover states con transitions suaves, y un hero con parallax ligero.',
     },
   ],
   dashboard: [
@@ -238,13 +248,29 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'filters',
       label: 'Filtros avanzados',
       tone: 'primary',
+      icon: 'search',
       prompt: 'Agrega filtros laterales por categoría, rango de precio y rating.',
     },
     {
       id: 'product-detail',
       label: 'Página de producto',
       tone: 'accent',
+      icon: 'package',
       prompt: 'Crea página de detalle de producto con galería, descripción, reviews y botón de comprar.',
+    },
+    {
+      id: 'sellers',
+      label: 'Perfiles de vendedores',
+      tone: 'muted',
+      icon: 'users',
+      prompt: 'Agrega perfiles públicos de vendedores con avatar, descripción, rating promedio y listado de sus productos.',
+    },
+    {
+      id: 'payments',
+      label: 'Integrar pagos',
+      tone: 'accent',
+      icon: 'credit-card',
+      prompt: 'Agrega checkout con integración de pagos (Stripe o MercadoPago) usando edge functions seguras y webhook para confirmar la orden.',
     },
   ],
   saas: [
@@ -252,13 +278,22 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       id: 'workspaces',
       label: 'Multi-tenant',
       tone: 'primary',
+      icon: 'users',
       prompt: 'Agrega soporte multi-workspace: cada usuario puede crear y unirse a workspaces, con datos aislados por RLS.',
     },
     {
       id: 'billing',
       label: 'Planes y billing',
       tone: 'accent',
+      icon: 'credit-card',
       prompt: 'Agrega pantalla de billing con plan actual, comparativa y botón de upgrade.',
+    },
+    {
+      id: 'saas-dashboard',
+      label: 'Dashboard de cuenta',
+      tone: 'muted',
+      icon: 'layout-dashboard',
+      prompt: 'Agrega dashboard de cuenta con métricas de uso, miembros del workspace y quick actions de configuración.',
     },
   ],
 };
@@ -269,6 +304,7 @@ export function getQuickActions(projectName: string, files: GeneratedFile[]): {
 } {
   const kind = detectAppKind(projectName, files);
   const specific = KIND_ACTIONS[kind] ?? [];
-  // Specific first, then base — capped to 6 to avoid noise.
-  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 6) };
+  // Specific first, then base. We return up to 12 — the bar shows the first
+  // few inline and tucks the rest behind a "Más" popover.
+  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 12) };
 }
