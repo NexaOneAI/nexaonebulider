@@ -31,8 +31,10 @@ describe('pwaActivator', () => {
     expect(parsed.name).toBe('My Cool App');
     expect(parsed.short_name).toBe('My Cool App');
     expect(parsed.display).toBe('standalone');
-    expect(parsed.icons).toHaveLength(2);
+    expect(parsed.icons.length).toBeGreaterThanOrEqual(2);
     expect(parsed.icons[0].src).toBe('/icon-192.svg');
+    // Must include a dedicated maskable icon for proper Android masking
+    expect(parsed.icons.some((i: any) => i.purpose === 'maskable')).toBe(true);
   });
 
   it('uses iconUrl when provided in manifest', () => {
@@ -77,6 +79,7 @@ describe('pwaActivator', () => {
     expect(paths).toContain('public/manifest.webmanifest');
     expect(paths).toContain('public/icon-192.svg');
     expect(paths).toContain('public/icon-512.svg');
+    expect(paths).toContain('public/icon-maskable.svg');
     expect(paths).toContain('index.html');
     expect(result.alreadyActive).toBe(false);
     expect(result.changed.length).toBeGreaterThan(0);

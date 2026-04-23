@@ -39,6 +39,7 @@ export interface ActivatePwaResult {
 const MANIFEST_PATH = 'public/manifest.webmanifest';
 const ICON_192_PATH = 'public/icon-192.svg';
 const ICON_512_PATH = 'public/icon-512.svg';
+const ICON_MASKABLE_PATH = 'public/icon-maskable.svg';
 const INDEX_HTML_PATH = 'index.html';
 
 function languageFor(path: string): string {
@@ -83,11 +84,18 @@ export function buildPlaceholderIconSvg(
   projectName: string,
   size: number,
   themeColor: string,
+  variant: 'any' | 'maskable' = 'any',
 ): string {
   const initials = escapeXml(projectInitials(projectName));
-  const fontSize = Math.round(size * 0.4);
+  // Maskable variant shrinks content into the inner ~70% safe zone so OS
+  // launchers (Android 8+) can apply circle/squircle masks without clipping.
+  const scale = variant === 'maskable' ? 0.55 : 0.78;
+  const fontSize = Math.round(size * (variant === 'maskable' ? 0.32 : 0.4));
+  const innerSize = Math.round(size * scale);
+  const inset = Math.round((size - innerSize) / 2);
   // Lighten theme color by 30% for the gradient stop
   const stop2 = lighten(themeColor, 0.3);
+  const radius = variant === 'maskable' ? 0 : Math.round(size * 0.22);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
@@ -95,7 +103,8 @@ export function buildPlaceholderIconSvg(
       <stop offset="100%" stop-color="${stop2}"/>
     </linearGradient>
   </defs>
-  <rect width="${size}" height="${size}" rx="${Math.round(size * 0.22)}" fill="url(#g)"/>
+  <rect width="${size}" height="${size}" rx="${radius}" fill="${variant === 'maskable' ? themeColor : 'url(#g)'}"/>
+  ${variant === 'maskable' ? `<rect x="${inset}" y="${inset}" width="${innerSize}" height="${innerSize}" rx="${Math.round(innerSize * 0.22)}" fill="url(#g)"/>` : ''}
   <text x="50%" y="50%" dy=".35em" text-anchor="middle"
     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif"
     font-size="${fontSize}" font-weight="700" fill="white" letter-spacing="-2">${initials}</text>
@@ -122,12 +131,14 @@ export function buildManifest(
 ): string {
   const icons = opts.iconUrl
     ? [
-        { src: opts.iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        { src: opts.iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ]
     : [
-        { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-        { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
+        { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+        { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any' },
+        { src: '/icon-maskable.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' },
       ];
   const manifest = {
     name: projectName || 'App',
@@ -206,6 +217,7 @@ export function activatePwa(
   });
   const icon192 = buildPlaceholderIconSvg(projectName, 192, themeColor);
   const icon512 = buildPlaceholderIconSvg(projectName, 512, themeColor);
+  const iconMaskable = buildPlaceholderIconSvg(projectName, 512, themeColor, 'maskable');
 
   const map = new Map(files.map((f) => [f.path, f] as const));
 
@@ -225,6 +237,7 @@ export function activatePwa(
   if (!options.iconUrl) {
     upsert(ICON_192_PATH, icon192);
     upsert(ICON_512_PATH, icon512);
+    upsert(ICON_MASKABLE_PATH, iconMaskable);
   }
 
   // Patch index.html — create a minimal one if missing.
