@@ -117,6 +117,13 @@ export function QuickActionsBar() {
     [projectName, files, lastUserPrompt],
   );
 
+  // Diagnostic log — helps verify the suggestions actually reactively change.
+  // Throttled to one console line per recompute (no spam during streaming
+  // because `files` is the same array reference between updates).
+  if (typeof window !== 'undefined') {
+    (window as unknown as { __nexa_last_kind?: string }).__nexa_last_kind = kind;
+  }
+
   if (files.length === 0) return null;
 
   const busy = loading || streaming;

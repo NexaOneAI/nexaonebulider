@@ -60,6 +60,71 @@ export interface DetectionContext {
   lastUserPrompt?: string;
 }
 
+/**
+ * Project capability signals — derived from current files. Used to FILTER
+ * already-completed actions out of the suggestions list (e.g. don't suggest
+ * "Activar PWA" if the manifest is already there).
+ */
+export interface ProjectSignals {
+  fileCount: number;
+  hasPwa: boolean;
+  hasAuth: boolean;
+  hasSupabase: boolean;
+  hasRouter: boolean;
+  hasSeoMeta: boolean;
+  hasAdminPanel: boolean;
+  hasCart: boolean;
+  hasCharts: boolean;
+  hasInventory: boolean;
+  hasPayments: boolean;
+}
+
+/** Cheap content-based capability detector. Runs on every render — no cache. */
+export function detectProjectSignals(files: GeneratedFile[]): ProjectSignals {
+  const safeFiles = Array.isArray(files) ? files : [];
+  const paths = safeFiles.map((f) => String(f?.path ?? '').toLowerCase()).join(' \n ');
+  const sample = safeFiles
+    .slice(0, 20)
+    .map((f) => String(f?.content ?? '').slice(0, 800).toLowerCase())
+    .join(' \n ');
+  const all = `${paths}\n${sample}`;
+
+  const has = (...needles: string[]) => needles.some((n) => all.includes(n));
+
+  return {
+    fileCount: safeFiles.length,
+    hasPwa: has('manifest.webmanifest', 'manifest.json', 'registersw', 'vite-plugin-pwa', 'serviceworker'),
+    hasAuth: has('supabase.auth', 'signinwithpassword', 'signup', '/login', 'use-auth', 'authprovider'),
+    hasSupabase: has('@supabase/supabase-js', 'createclient(', 'supabase.from(', 'integrations/supabase'),
+    hasRouter: has('react-router', 'createbrowserrouter', '<route ', 'browserrouter'),
+    hasSeoMeta: has('<meta name="description"', 'og:title', 'application/ld+json'),
+    hasAdminPanel: has('/admin', 'has_role(', 'user_roles', 'app_role'),
+    hasCart: has('cart', 'carrito', 'addtocart', 'checkout'),
+    hasCharts: has('recharts', 'chart.js', '<linechart', '<barchart', 'd3-'),
+    hasInventory: has('inventory', 'inventario', 'stock'),
+    hasPayments: has('stripe', 'mercadopago', 'paddle', 'create-payment'),
+  };
+}
+
+/**
+ * Map: action id → predicate that returns TRUE when the action is already
+ * satisfied and should be filtered out of the suggestions list. Anything not
+ * listed here is considered always-relevant.
+ */
+const ACTION_DONE: Record<string, (sig: ProjectSignals) => boolean> = {
+  pwa: (s) => s.hasPwa,
+  'pwa-icon': (s) => !s.hasPwa, // hide until PWA is enabled
+  'admin-panel': (s) => s.hasAdminPanel,
+  auth: (s) => s.hasAuth,
+  database: (s) => s.hasSupabase,
+  seo: (s) => s.hasSeoMeta,
+  cart: (s) => !s.hasCart, // POS-only; only show when cart already exists to "improve" it
+  inventory: (s) => s.hasInventory,
+  'add-chart': (s) => s.hasCharts,
+  payments: (s) => s.hasPayments,
+  'pwa-install': (s) => s.hasPwa,
+};
+
 /** Score-based detector. Each kind accumulates points from multiple signals. */
 function score(haystack: string, words: string[]): number {
   let n = 0;
@@ -416,10 +481,59 @@ export function getQuickActions(
 ): {
   kind: AppKind;
   actions: QuickAction[];
+  signals: ProjectSignals;
 } {
   const kind = detectAppKind(projectName, files, ctx);
+  const signals = detectProjectSignals(files);
   const specific = KIND_ACTIONS[kind] ?? [];
-  // Specific first, then base. We return up to 12 — the bar shows the first
-  // few inline and tucks the rest behind a "Más" popover.
-  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 12) };
+
+  // 1. Combine specific (vertical) + base (always-useful).
+  const combined = [...specific, ...BASE_ACTIONS];
+
+  // 2. Filter out actions that are already satisfied by the current code.
+  //    This is what makes suggestions truly *change* as the project evolves:
+  //    once you add auth, "Agregar autenticación" disappears and the next
+  //    relevant action surfaces in its place.
+  const relevant = combined.filter((a) => {
+    const done = ACTION_DONE[a.id];
+    if (!done) return true;
+    try {
+      return !done(signals);
+    } catch {
+      return true;
+    }
+  });
+
+  // 3. Reorder by progress: brand-new projects get setup-heavy actions first
+    //    (auth, db, deploy-ready), mature projects get polish/scale actions
+  //    (SEO, mobile, admin) bumped up.
+  const isMature = signals.fileCount >= 8;
+  const sorted = relevant.slice().sort((a, b) => {
+    const weight = (id: string): number => {
+      if (!isMature) {
+        if (id === 'auth') return -3;
+        if (id === 'database') return -2;
+        if (id === 'pwa') return -1;
+      } else {
+        if (id === 'seo') return -3;
+        if (id === 'mobile') return -2;
+        if (id === 'deploy-now') return -1;
+      }
+      return 0;
+    };
+    return weight(a.id) - weight(b.id);
+  });
+
+  // 4. De-dup by id (defensive — KIND_ACTIONS shouldn't collide with BASE
+  //    but if a vertical adds e.g. its own "auth" later, prefer the specific).
+  const seen = new Set<string>();
+  const actions: QuickAction[] = [];
+  for (const a of sorted) {
+    if (seen.has(a.id)) continue;
+    seen.add(a.id);
+    actions.push(a);
+    if (actions.length >= 12) break;
+  }
+
+  return { kind, actions, signals };
 }
