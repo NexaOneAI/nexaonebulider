@@ -15,6 +15,7 @@ import { KnowledgeDialog } from './KnowledgeDialog';
 import { DeployDialog } from './DeployDialog';
 import { GithubDialog } from './GithubDialog';
 import { useGithubStore } from '@/features/github/githubStore';
+import { safe } from '@/lib/utils';
 import {
   getSandbox,
   setSandbox,
@@ -31,7 +32,8 @@ interface Props {
 
 export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const auth = useAuth();
+  const profile = auth?.profile ?? null;
   const {
     projectName, setProjectName, model, setModel,
     viewMode, setViewMode, sidebarOpen, toggleSidebar,
@@ -43,9 +45,11 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   const lastSavedAt = useBuilderStore((s) => s.lastSavedAt);
   const saveVersion = useBuilderStore((s) => s.saveVersion);
 
-  const displayCredits = creditsRemaining >= 0
-    ? creditsRemaining
-    : profile?.credits ?? '--';
+  const profileCredits = safe<number>(profile, 'credits', null);
+  const displayCredits =
+    typeof creditsRemaining === 'number' && creditsRemaining >= 0
+      ? creditsRemaining
+      : (profileCredits ?? '--');
 
   const projectId = useBuilderStore((s) => s.projectId);
   const [shareOpen, setShareOpen] = useState(false);
