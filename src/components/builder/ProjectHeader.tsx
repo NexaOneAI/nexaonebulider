@@ -76,7 +76,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
       toast.info('Abre un proyecto primero');
       return;
     }
-    const wcEnabled = profile?.webcontainers_enabled === true;
+    const wcEnabled = safe<boolean>(profile, 'webcontainers_enabled', false) === true;
     // Cycle: iframe → sandpack → (webcontainer if flag) → iframe
     let next: SandboxKind;
     if (sandbox === 'iframe') next = 'sandpack';
