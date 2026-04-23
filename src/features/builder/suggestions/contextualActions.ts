@@ -39,7 +39,13 @@ export interface QuickAction {
    * Optional UI action to run instead of (or in addition to) sending a prompt.
    * Lets a button open a dialog (GitHub, Deploy, etc.) when that's the right UX.
    */
-  uiAction?: 'open-github' | 'open-deploy' | 'open-knowledge' | 'open-share';
+  uiAction?:
+    | 'open-github'
+    | 'open-deploy'
+    | 'open-knowledge'
+    | 'open-share'
+    | 'activate-pwa'
+    | 'regenerate-pwa-icon';
 }
 
 /**
@@ -74,8 +80,16 @@ const BASE_ACTIONS: QuickAction[] = [
     label: 'Activar PWA',
     tone: 'accent',
     icon: 'smartphone',
-    prompt:
-      'Convierte la app en PWA instalable: agrega manifest.webmanifest con íconos e información del negocio, registra un service worker (solo en producción, deshabilitado en iframes/preview), y añade meta tags para "Add to Home Screen" en iOS y Android.',
+    prompt: '',
+    uiAction: 'activate-pwa',
+  },
+  {
+    id: 'pwa-icon',
+    label: 'Regenerar icono PWA',
+    tone: 'muted',
+    icon: 'image',
+    prompt: '',
+    uiAction: 'regenerate-pwa-icon',
   },
   {
     id: 'admin-panel',
