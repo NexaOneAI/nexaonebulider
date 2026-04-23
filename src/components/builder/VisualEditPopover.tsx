@@ -126,7 +126,7 @@ export function VisualEditPopover({ iframeRect }: Props) {
           </span>
           {selected.location && (
             <span className="font-mono text-[10px] text-muted-foreground">
-              {String(selected.location).split(':').slice(-2).join(':')}
+              {selected.location.path.split('/').pop()}:{selected.location.line}
             </span>
           )}
         </div>

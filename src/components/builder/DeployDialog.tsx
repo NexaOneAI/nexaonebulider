@@ -45,6 +45,8 @@ export function DeployDialog({ open, onClose, projectId, projectName, files }: P
 
   useEffect(() => {
     if (open && projectId) loadHistory();
+    // loadHistory is stable via closure; we intentionally omit it.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, projectId]);
 
   const lastLive = history.find((d) => d.status === 'live' && d.site_id);
@@ -83,13 +85,13 @@ export function DeployDialog({ open, onClose, projectId, projectName, files }: P
         </DialogHeader>
 
         <div className="space-y-4">
-          {lastLive && (
+          {lastLive && lastLive.url && (
             <div className="rounded-md border border-primary/30 bg-primary/5 p-3">
               <div className="mb-1 flex items-center gap-2 text-xs text-muted-foreground">
                 <CheckCircle2 className="h-3 w-3 text-primary" /> Último deploy en vivo
               </div>
               <a
-                href={lastLive.url ?? '#'}
+                href={lastLive.url}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
