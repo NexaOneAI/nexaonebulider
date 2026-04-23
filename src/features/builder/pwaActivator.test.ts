@@ -12,8 +12,13 @@ const baseFiles: GeneratedFile[] = [
   {
     path: 'index.html',
     content: `<!doctype html><html><head><meta charset="UTF-8" /></head><body><div id="root"></div></body></html>`,
+    language: 'html',
   },
-  { path: 'src/App.tsx', content: 'export default function App(){return null}' },
+  {
+    path: 'src/App.tsx',
+    content: 'export default function App(){return null}',
+    language: 'tsx',
+  },
 ];
 
 describe('pwaActivator', () => {

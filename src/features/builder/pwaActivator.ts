@@ -41,6 +41,16 @@ const ICON_192_PATH = 'public/icon-192.svg';
 const ICON_512_PATH = 'public/icon-512.svg';
 const INDEX_HTML_PATH = 'index.html';
 
+function languageFor(path: string): string {
+  if (path.endsWith('.svg')) return 'xml';
+  if (path.endsWith('.webmanifest') || path.endsWith('.json')) return 'json';
+  if (path.endsWith('.html')) return 'html';
+  if (path.endsWith('.tsx')) return 'tsx';
+  if (path.endsWith('.ts')) return 'ts';
+  if (path.endsWith('.css')) return 'css';
+  return 'plaintext';
+}
+
 /** Friendly project initials for the placeholder icon. */
 function projectInitials(name: string): string {
   const cleaned = name.trim();
@@ -202,7 +212,7 @@ export function activatePwa(
   function upsert(path: string, content: string) {
     const prev = map.get(path);
     if (!prev || prev.content !== content) {
-      map.set(path, { path, content });
+      map.set(path, { path, content, language: languageFor(path) });
       changed.push(path);
     }
   }
@@ -223,7 +233,11 @@ export function activatePwa(
   if (indexFile) {
     const patched = patchIndexHtml(indexFile.content, themeColor, iconHref);
     if (patched !== indexFile.content) {
-      map.set(INDEX_HTML_PATH, { path: INDEX_HTML_PATH, content: patched });
+      map.set(INDEX_HTML_PATH, {
+        path: INDEX_HTML_PATH,
+        content: patched,
+        language: 'html',
+      });
       changed.push(INDEX_HTML_PATH);
     }
   } else {
@@ -242,6 +256,7 @@ export function activatePwa(
     map.set(INDEX_HTML_PATH, {
       path: INDEX_HTML_PATH,
       content: patchIndexHtml(minimal, themeColor, iconHref),
+      language: 'html',
     });
     changed.push(INDEX_HTML_PATH);
   }
