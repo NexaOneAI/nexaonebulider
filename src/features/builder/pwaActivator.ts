@@ -122,12 +122,14 @@ export function buildManifest(
 ): string {
   const icons = opts.iconUrl
     ? [
-        { src: opts.iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any maskable' },
-        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+        { src: opts.iconUrl, sizes: '192x192', type: 'image/png', purpose: 'any' },
+        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: opts.iconUrl, sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ]
     : [
-        { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
-        { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' },
+        { src: '/icon-192.svg', sizes: '192x192', type: 'image/svg+xml', purpose: 'any' },
+        { src: '/icon-512.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'any' },
+        { src: '/icon-maskable.svg', sizes: '512x512', type: 'image/svg+xml', purpose: 'maskable' },
       ];
   const manifest = {
     name: projectName || 'App',
