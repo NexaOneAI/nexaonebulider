@@ -481,10 +481,59 @@ export function getQuickActions(
 ): {
   kind: AppKind;
   actions: QuickAction[];
+  signals: ProjectSignals;
 } {
   const kind = detectAppKind(projectName, files, ctx);
+  const signals = detectProjectSignals(files);
   const specific = KIND_ACTIONS[kind] ?? [];
-  // Specific first, then base. We return up to 12 — the bar shows the first
-  // few inline and tucks the rest behind a "Más" popover.
-  return { kind, actions: [...specific, ...BASE_ACTIONS].slice(0, 12) };
+
+  // 1. Combine specific (vertical) + base (always-useful).
+  const combined = [...specific, ...BASE_ACTIONS];
+
+  // 2. Filter out actions that are already satisfied by the current code.
+  //    This is what makes suggestions truly *change* as the project evolves:
+  //    once you add auth, "Agregar autenticación" disappears and the next
+  //    relevant action surfaces in its place.
+  const relevant = combined.filter((a) => {
+    const done = ACTION_DONE[a.id];
+    if (!done) return true;
+    try {
+      return !done(signals);
+    } catch {
+      return true;
+    }
+  });
+
+  // 3. Reorder by progress: brand-new projects get setup-heavy actions first
+    //    (auth, db, deploy-ready), mature projects get polish/scale actions
+  //    (SEO, mobile, admin) bumped up.
+  const isMature = signals.fileCount >= 8;
+  const sorted = relevant.slice().sort((a, b) => {
+    const weight = (id: string): number => {
+      if (!isMature) {
+        if (id === 'auth') return -3;
+        if (id === 'database') return -2;
+        if (id === 'pwa') return -1;
+      } else {
+        if (id === 'seo') return -3;
+        if (id === 'mobile') return -2;
+        if (id === 'deploy-now') return -1;
+      }
+      return 0;
+    };
+    return weight(a.id) - weight(b.id);
+  });
+
+  // 4. De-dup by id (defensive — KIND_ACTIONS shouldn't collide with BASE
+  //    but if a vertical adds e.g. its own "auth" later, prefer the specific).
+  const seen = new Set<string>();
+  const actions: QuickAction[] = [];
+  for (const a of sorted) {
+    if (seen.has(a.id)) continue;
+    seen.add(a.id);
+    actions.push(a);
+    if (actions.length >= 12) break;
+  }
+
+  return { kind, actions, signals };
 }
