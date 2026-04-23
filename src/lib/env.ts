@@ -47,3 +47,18 @@ export function isProd(): boolean {
 export function isDev(): boolean {
   return env.DEV;
 }
+
+/**
+ * Returns the list of *required* VITE_* keys that are missing or empty.
+ * Used by the boot screen to render a friendly warning instead of a blank page.
+ */
+export function getMissingSupabaseEnv(): string[] {
+  const missing: string[] = [];
+  if (!env.SUPABASE_URL) missing.push('VITE_SUPABASE_URL');
+  if (!env.SUPABASE_PUBLISHABLE_KEY) missing.push('VITE_SUPABASE_PUBLISHABLE_KEY');
+  return missing;
+}
+
+export function hasSupabaseEnv(): boolean {
+  return getMissingSupabaseEnv().length === 0;
+}
