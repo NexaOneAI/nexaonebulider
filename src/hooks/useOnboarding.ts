@@ -7,7 +7,9 @@ import { useAuth } from './useAuth';
  * Auto-creates the row on first dashboard visit.
  */
 export function useOnboarding() {
-  const { user, isAuthenticated } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
+  const isAuthenticated = !!auth?.isAuthenticated;
   const [state, setState] = useState<OnboardingState | null>(null);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
@@ -19,11 +21,17 @@ export function useOnboarding() {
       return;
     }
     (async () => {
-      const s = await onboardingService.getOrCreate(user.id);
-      if (!active) return;
-      setState(s);
-      setLoading(false);
-      if (s && !s.completed) setOpen(true);
+      try {
+        const s = await onboardingService.getOrCreate(user.id);
+        if (!active) return;
+        setState(s ?? null);
+        if (s && !s.completed) setOpen(true);
+      } catch (err) {
+        console.warn('[useOnboarding] getOrCreate failed:', err);
+        if (active) setState(null);
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
     return () => {
       active = false;
@@ -37,8 +45,12 @@ export function useOnboarding() {
     setOpen,
     refresh: async () => {
       if (!user?.id) return;
-      const s = await onboardingService.getOrCreate(user.id);
-      setState(s);
+      try {
+        const s = await onboardingService.getOrCreate(user.id);
+        setState(s ?? null);
+      } catch (err) {
+        console.warn('[useOnboarding] refresh failed:', err);
+      }
     },
     /** Manually re-open onboarding (e.g. from "Help" menu). */
     reopen: () => setOpen(true),

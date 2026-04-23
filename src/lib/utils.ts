@@ -30,3 +30,28 @@ export function truncate(str: string, length: number): string {
 export function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+/**
+ * Safe nested property access. Never throws.
+ *
+ *   safe(user, "onboarding.step", "start")  // → "start" if anything is missing
+ *
+ * Use this anywhere we read from objects that may be `undefined`/`null`
+ * during loading (auth, onboarding, profile, etc.) to avoid crashing the
+ * React tree and showing a white screen.
+ */
+export function safe<T = unknown>(
+  obj: unknown,
+  path: string,
+  fallback: T | null = null,
+): T | null {
+  try {
+    if (obj == null || !path) return fallback;
+    const value = path
+      .split('.')
+      .reduce<unknown>((acc, key) => (acc == null ? acc : (acc as Record<string, unknown>)[key]), obj);
+    return (value === undefined || value === null ? fallback : (value as T));
+  } catch {
+    return fallback;
+  }
+}

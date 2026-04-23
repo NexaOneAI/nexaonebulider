@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { Zap, Clock, Folder, ArrowRight, Sparkles, HelpCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { formatDate } from '@/lib/utils';
+import { safe } from '@/lib/utils';
 import { TemplateGallery } from '@/components/templates/TemplateGallery';
 import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -15,26 +16,36 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
 export default function Dashboard() {
-  const { profile } = useAuth();
-  const { projects } = useProjects();
+  const auth = useAuth();
+  const projectsHook = useProjects();
+  const profile = auth?.profile ?? null;
+  const projects = Array.isArray(projectsHook?.projects) ? projectsHook.projects : [];
   const navigate = useNavigate();
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const { open: onboardingOpen, setOpen: setOnboardingOpen, reopen, refresh } = useOnboarding();
+  const onboarding = useOnboarding();
+  const onboardingOpen = !!onboarding?.open;
+  const setOnboardingOpen = onboarding?.setOpen ?? (() => {});
+  const reopen = onboarding?.reopen ?? (() => {});
+  const refresh = onboarding?.refresh ?? (async () => {});
+
+  const fullName = safe<string>(profile, 'full_name', '') || 'Builder';
+  const credits = safe<number>(profile, 'credits', 0) ?? 0;
+  const plan = (safe<string>(profile, 'plan', 'free') ?? 'free').toUpperCase();
 
   return (
     <AppShell>
       <div className="container py-8">
         <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-8">
-          <h1 className="text-3xl font-bold">Hola, {profile?.full_name || 'Builder'} 👋</h1>
+          <h1 className="text-3xl font-bold">Hola, {fullName} 👋</h1>
           <p className="mt-1 text-muted-foreground">Gestiona tus proyectos y créditos</p>
         </motion.div>
 
         {/* Stats */}
         <div className="mb-8 grid gap-4 md:grid-cols-3">
           {[
-            { icon: Zap, label: 'Créditos', value: profile?.credits ?? 0, color: 'text-primary' },
+            { icon: Zap, label: 'Créditos', value: credits, color: 'text-primary' },
             { icon: Folder, label: 'Proyectos', value: projects.length, color: 'text-accent' },
-            { icon: Clock, label: 'Plan', value: (profile?.plan ?? 'free').toUpperCase(), color: 'text-success' },
+            { icon: Clock, label: 'Plan', value: plan, color: 'text-success' },
           ].map((stat, i) => (
             <motion.div key={i} initial="hidden" animate="visible" variants={fadeUp} transition={{ delay: i * 0.1 }}
               className="rounded-xl border border-border/50 bg-card p-5 shadow-card">
@@ -74,15 +85,23 @@ export default function Dashboard() {
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <div key={project.id}
+            {projects.map((project) => {
+              const id = safe<string>(project, 'id', '') ?? '';
+              const name = safe<string>(project, 'name', 'Sin título') ?? 'Sin título';
+              const status = safe<string>(project, 'status', 'draft') ?? 'draft';
+              const updatedAt = safe<string>(project, 'updated_at', '');
+              return (
+              <div key={id || Math.random().toString(36)}
                 className="cursor-pointer rounded-xl border border-border/50 bg-card p-5 shadow-card transition-all hover:border-primary/30"
-                onClick={() => navigate(`/builder/${project.id}`)}>
-                <h3 className="font-semibold">{project.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{project.status}</p>
-                <p className="mt-2 text-xs text-muted-foreground/70">{formatDate(project.updated_at)}</p>
+                onClick={() => id && navigate(`/builder/${id}`)}>
+                <h3 className="font-semibold">{name}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{status}</p>
+                {updatedAt && (
+                  <p className="mt-2 text-xs text-muted-foreground/70">{formatDate(updatedAt)}</p>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
