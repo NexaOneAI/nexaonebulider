@@ -32,6 +32,10 @@ import {
 } from '@/features/builder/suggestions/contextualActions';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import {
+  activatePwaForCurrentProject,
+  regeneratePwaIcon,
+} from '@/features/builder/store/pwaAction';
 
 const ICONS = {
   sparkles: Sparkles,
@@ -125,6 +129,18 @@ export function QuickActionsBar() {
     }
     if (action.uiAction === 'open-share') {
       toast.info('Usa el botón de compartir en el header');
+      return;
+    }
+    if (action.uiAction === 'activate-pwa') {
+      activatePwaForCurrentProject().catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Error activando PWA'),
+      );
+      return;
+    }
+    if (action.uiAction === 'regenerate-pwa-icon') {
+      regeneratePwaIcon().catch((err) =>
+        toast.error(err instanceof Error ? err.message : 'Error generando icono'),
+      );
       return;
     }
     if (busy) {
