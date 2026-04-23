@@ -24,30 +24,49 @@ export const useAuthStore = create<AuthState & AuthActions>((set, get) => ({
   initialize: async () => {
     if (get().initialized) return;
 
-    authService.onAuthStateChange(async (_event, session) => {
-      set({ session, user: session?.user ?? null, loading: false });
-      if (session?.user) {
-        setTimeout(async () => {
-          const [profile, role] = await Promise.all([
-            authService.getProfile(session.user.id),
-            authService.getUserRole(session.user.id),
-          ]);
-          if (profile) set({ profile: { ...profile, role } });
-        }, 0);
-      } else {
-        set({ profile: null });
-      }
-    });
+    // CRITICAL: initialize() must ALWAYS finish setting initialized=true,
+    // otherwise the app freezes on the "Cargando Nexa One..." loader.
+    try {
+      authService.onAuthStateChange(async (_event, session) => {
+        set({ session, user: session?.user ?? null, loading: false });
+        if (session?.user) {
+          setTimeout(async () => {
+            try {
+              const [profile, role] = await Promise.all([
+                authService.getProfile(session.user.id),
+                authService.getUserRole(session.user.id),
+              ]);
+              if (profile) set({ profile: { ...profile, role } });
+            } catch (err) {
+              console.error('[authStore] profile fetch failed:', err);
+            }
+          }, 0);
+        } else {
+          set({ profile: null });
+        }
+      });
+    } catch (err) {
+      console.error('[authStore] onAuthStateChange failed:', err);
+    }
 
-    const session = await authService.getSession();
+    let session: Session | null = null;
+    try {
+      session = await authService.getSession();
+    } catch (err) {
+      console.error('[authStore] getSession failed:', err);
+    }
     set({ session, user: session?.user ?? null, loading: false, initialized: true });
 
     if (session?.user) {
-      const [profile, role] = await Promise.all([
-        authService.getProfile(session.user.id),
-        authService.getUserRole(session.user.id),
-      ]);
-      if (profile) set({ profile: { ...profile, role } });
+      try {
+        const [profile, role] = await Promise.all([
+          authService.getProfile(session.user.id),
+          authService.getUserRole(session.user.id),
+        ]);
+        if (profile) set({ profile: { ...profile, role } });
+      } catch (err) {
+        console.error('[authStore] initial profile fetch failed:', err);
+      }
     }
   },
 
