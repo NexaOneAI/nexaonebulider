@@ -60,7 +60,8 @@ export function generatePreviewHtml(
     const normalised = normalisePath(f.path);
     const isJsx = f.path.endsWith('.tsx') || f.path.endsWith('.jsx');
     const sanitized = sanitizeLucideIcons(f.content);
-    const annotated = isJsx ? annotateJsxWithDataLoc(sanitized, f.path) : sanitized;
+    const envSafe = sanitizeImportMetaEnv(sanitized);
+    const annotated = isJsx ? annotateJsxWithDataLoc(envSafe, f.path) : envSafe;
     moduleMap.set(normalised, transpileSafe(annotated, f.path));
   }
 
@@ -135,6 +136,19 @@ export function cn(...inputs) { return twMerge(clsx(inputs)); }`,
 <body>
   <div id="root"></div>
   <script>
+    // ---- Safe import.meta.env shim for generated code ----
+    // Generated apps may reference import.meta.env.PROD / DEV / MODE.
+    // The preview iframe has no Vite, so import.meta.env is undefined.
+    // We expose a safe fallback on window that the transpile step rewrites
+    // import.meta.env references to.
+    window.__LOV_ENV = Object.freeze({
+      PROD: false,
+      DEV: true,
+      MODE: 'development',
+      SSR: false,
+      BASE_URL: '/',
+    });
+
     // Forward runtime errors + console + network to the parent (Lovable builder)
     function __report(kind, payload) {
       try {
@@ -551,6 +565,31 @@ function sanitizeLucideIcons(src: string): string {
         .join(',');
       return `import {${fixed}} from ${q}lucide-react${q}`;
     },
+  );
+  return out;
+}
+
+/**
+ * Replace `import.meta.env` usages with a safe global so generated code
+ * doesn't crash inside the preview iframe (no Vite present).
+ * - import.meta.env.PROD  → (window.__LOV_ENV.PROD)
+ * - import.meta.env       → (window.__LOV_ENV)
+ * Also rewrites bare `import.meta` reads of `.env` defensively.
+ */
+function sanitizeImportMetaEnv(src: string): string {
+  if (!/import\.meta/.test(src)) return src;
+  let out = src;
+  // import.meta.env.<KEY>  →  (window.__LOV_ENV?.<KEY>)
+  out = out.replace(
+    /\bimport\.meta\.env\.([A-Za-z_$][A-Za-z0-9_$]*)/g,
+    '(window.__LOV_ENV?.$1)',
+  );
+  // import.meta.env  →  (window.__LOV_ENV || {})
+  out = out.replace(/\bimport\.meta\.env\b/g, '(window.__LOV_ENV || {})');
+  // import.meta (rarely used; fall back to an object so .url/.env reads don't crash)
+  out = out.replace(
+    /\bimport\.meta\b(?!\s*\.)/g,
+    '({ env: (window.__LOV_ENV || {}), url: location.href })',
   );
   return out;
 }
