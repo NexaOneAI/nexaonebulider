@@ -60,7 +60,8 @@ export function generatePreviewHtml(
     const normalised = normalisePath(f.path);
     const isJsx = f.path.endsWith('.tsx') || f.path.endsWith('.jsx');
     const sanitized = sanitizeLucideIcons(f.content);
-    const annotated = isJsx ? annotateJsxWithDataLoc(sanitized, f.path) : sanitized;
+    const envSafe = sanitizeImportMetaEnv(sanitized);
+    const annotated = isJsx ? annotateJsxWithDataLoc(envSafe, f.path) : envSafe;
     moduleMap.set(normalised, transpileSafe(annotated, f.path));
   }
 
