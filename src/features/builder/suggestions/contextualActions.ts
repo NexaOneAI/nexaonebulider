@@ -360,13 +360,64 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       prompt: 'Agrega dashboard de cuenta con métricas de uso, miembros del workspace y quick actions de configuración.',
     },
   ],
+  admin: [
+    {
+      id: 'admin-users',
+      label: 'Gestión de usuarios',
+      tone: 'primary',
+      icon: 'users',
+      prompt: 'Agrega CRUD de usuarios con búsqueda, filtro por rol, suspender/activar cuenta, y modal de detalle. Usa la tabla user_roles separada y has_role security definer.',
+    },
+    {
+      id: 'admin-roles',
+      label: 'Permisos por rol',
+      tone: 'accent',
+      icon: 'shield',
+      prompt: 'Agrega gestión de roles (admin/moderator/user) usando una tabla user_roles separada con enum app_role y función has_role SECURITY DEFINER. Aplica las RLS correspondientes.',
+    },
+    {
+      id: 'admin-audit',
+      label: 'Audit log',
+      tone: 'muted',
+      icon: 'history',
+      prompt: 'Agrega un audit log: tabla audit_logs con user_id, action, target, metadata jsonb, created_at. Insertar desde edge functions y mostrarlo en una vista admin con filtros.',
+    },
+  ],
+  mobile: [
+    {
+      id: 'pwa-install',
+      label: 'Hacer instalable',
+      tone: 'primary',
+      icon: 'smartphone',
+      uiAction: 'activate-pwa',
+      prompt: '',
+    },
+    {
+      id: 'mobile-bottom-nav',
+      label: 'Navegación inferior',
+      tone: 'accent',
+      icon: 'layout-dashboard',
+      prompt: 'Agrega una bottom navigation bar fija para móvil (oculta en desktop) con 4 items principales, iconos y estado activo.',
+    },
+    {
+      id: 'mobile-touch',
+      label: 'Optimizar táctil',
+      tone: 'muted',
+      icon: 'smartphone',
+      prompt: 'Aumenta el área tappable de todos los botones (min 44x44), añade :active states con scale-95, y reemplaza tooltips por long-press hints en móvil.',
+    },
+  ],
 };
 
-export function getQuickActions(projectName: string, files: GeneratedFile[]): {
+export function getQuickActions(
+  projectName: string,
+  files: GeneratedFile[],
+  ctx: DetectionContext = {},
+): {
   kind: AppKind;
   actions: QuickAction[];
 } {
-  const kind = detectAppKind(projectName, files);
+  const kind = detectAppKind(projectName, files, ctx);
   const specific = KIND_ACTIONS[kind] ?? [];
   // Specific first, then base. We return up to 12 — the bar shows the first
   // few inline and tucks the rest behind a "Más" popover.
