@@ -60,6 +60,71 @@ export interface DetectionContext {
   lastUserPrompt?: string;
 }
 
+/**
+ * Project capability signals — derived from current files. Used to FILTER
+ * already-completed actions out of the suggestions list (e.g. don't suggest
+ * "Activar PWA" if the manifest is already there).
+ */
+export interface ProjectSignals {
+  fileCount: number;
+  hasPwa: boolean;
+  hasAuth: boolean;
+  hasSupabase: boolean;
+  hasRouter: boolean;
+  hasSeoMeta: boolean;
+  hasAdminPanel: boolean;
+  hasCart: boolean;
+  hasCharts: boolean;
+  hasInventory: boolean;
+  hasPayments: boolean;
+}
+
+/** Cheap content-based capability detector. Runs on every render — no cache. */
+export function detectProjectSignals(files: GeneratedFile[]): ProjectSignals {
+  const safeFiles = Array.isArray(files) ? files : [];
+  const paths = safeFiles.map((f) => String(f?.path ?? '').toLowerCase()).join(' \n ');
+  const sample = safeFiles
+    .slice(0, 20)
+    .map((f) => String(f?.content ?? '').slice(0, 800).toLowerCase())
+    .join(' \n ');
+  const all = `${paths}\n${sample}`;
+
+  const has = (...needles: string[]) => needles.some((n) => all.includes(n));
+
+  return {
+    fileCount: safeFiles.length,
+    hasPwa: has('manifest.webmanifest', 'manifest.json', 'registersw', 'vite-plugin-pwa', 'serviceworker'),
+    hasAuth: has('supabase.auth', 'signinwithpassword', 'signup', '/login', 'use-auth', 'authprovider'),
+    hasSupabase: has('@supabase/supabase-js', 'createclient(', 'supabase.from(', 'integrations/supabase'),
+    hasRouter: has('react-router', 'createbrowserrouter', '<route ', 'browserrouter'),
+    hasSeoMeta: has('<meta name="description"', 'og:title', 'application/ld+json'),
+    hasAdminPanel: has('/admin', 'has_role(', 'user_roles', 'app_role'),
+    hasCart: has('cart', 'carrito', 'addtocart', 'checkout'),
+    hasCharts: has('recharts', 'chart.js', '<linechart', '<barchart', 'd3-'),
+    hasInventory: has('inventory', 'inventario', 'stock'),
+    hasPayments: has('stripe', 'mercadopago', 'paddle', 'create-payment'),
+  };
+}
+
+/**
+ * Map: action id → predicate that returns TRUE when the action is already
+ * satisfied and should be filtered out of the suggestions list. Anything not
+ * listed here is considered always-relevant.
+ */
+const ACTION_DONE: Record<string, (sig: ProjectSignals) => boolean> = {
+  pwa: (s) => s.hasPwa,
+  'pwa-icon': (s) => !s.hasPwa, // hide until PWA is enabled
+  'admin-panel': (s) => s.hasAdminPanel,
+  auth: (s) => s.hasAuth,
+  database: (s) => s.hasSupabase,
+  seo: (s) => s.hasSeoMeta,
+  cart: (s) => !s.hasCart, // POS-only; only show when cart already exists to "improve" it
+  inventory: (s) => s.hasInventory,
+  'add-chart': (s) => s.hasCharts,
+  payments: (s) => s.hasPayments,
+  'pwa-install': (s) => s.hasPwa,
+};
+
 /** Score-based detector. Each kind accumulates points from multiple signals. */
 function score(haystack: string, words: string[]): number {
   let n = 0;
