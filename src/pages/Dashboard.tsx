@@ -85,15 +85,23 @@ export default function Dashboard() {
           />
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <div key={project.id}
+            {projects.map((project) => {
+              const id = safe<string>(project, 'id', '') ?? '';
+              const name = safe<string>(project, 'name', 'Sin título') ?? 'Sin título';
+              const status = safe<string>(project, 'status', 'draft') ?? 'draft';
+              const updatedAt = safe<string>(project, 'updated_at', '');
+              return (
+              <div key={id || Math.random().toString(36)}
                 className="cursor-pointer rounded-xl border border-border/50 bg-card p-5 shadow-card transition-all hover:border-primary/30"
-                onClick={() => navigate(`/builder/${project.id}`)}>
-                <h3 className="font-semibold">{project.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{project.status}</p>
-                <p className="mt-2 text-xs text-muted-foreground/70">{formatDate(project.updated_at)}</p>
+                onClick={() => id && navigate(`/builder/${id}`)}>
+                <h3 className="font-semibold">{name}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{status}</p>
+                {updatedAt && (
+                  <p className="mt-2 text-xs text-muted-foreground/70">{formatDate(updatedAt)}</p>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
