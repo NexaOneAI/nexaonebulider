@@ -22,7 +22,9 @@ interface Props {
 type Step = 0 | 1 | 2;
 
 export function OnboardingFlow({ open, onOpenChange, onCompleted }: Props) {
-  const { user, refreshProfile } = useAuth();
+  const auth = useAuth();
+  const user = auth?.user ?? null;
+  const refreshProfile = auth?.refreshProfile ?? (async () => {});
   const navigate = useNavigate();
   const [step, setStep] = useState<Step>(0);
   const [grantingCredits, setGrantingCredits] = useState(false);
@@ -48,17 +50,20 @@ export function OnboardingFlow({ open, onOpenChange, onCompleted }: Props) {
     onboardingService
       .grantWelcomeCredits(user.id, 25)
       .then(async (r) => {
-        if (r.ok) {
+        if (r?.ok) {
           setCreditsGranted(true);
           if (!r.already) setCreditsAmount(25);
-          await refreshProfile();
+          try { await refreshProfile(); } catch (err) { console.warn('[Onboarding] refreshProfile failed:', err); }
         }
       })
+      .catch((err) => console.warn('[Onboarding] grantWelcomeCredits failed:', err))
       .finally(() => setGrantingCredits(false));
   }, [open, user?.id, creditsGranted, grantingCredits, refreshProfile]);
 
   const persistStep = async (next: number) => {
-    if (user?.id) await onboardingService.setStep(user.id, next);
+    if (!user?.id) return;
+    try { await onboardingService.setStep(user.id, next); }
+    catch (err) { console.warn('[Onboarding] setStep failed:', err); }
   };
 
   const handleNext = async () => {
@@ -73,7 +78,10 @@ export function OnboardingFlow({ open, onOpenChange, onCompleted }: Props) {
   };
 
   const handleSkip = async () => {
-    if (user?.id) await onboardingService.skip(user.id);
+    if (user?.id) {
+      try { await onboardingService.skip(user.id); }
+      catch (err) { console.warn('[Onboarding] skip failed:', err); }
+    }
     onOpenChange(false);
     onCompleted?.();
   };
