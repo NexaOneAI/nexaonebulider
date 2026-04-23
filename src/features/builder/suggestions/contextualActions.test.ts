@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { getQuickActions, detectAppKind } from './contextualActions';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
 
-const mk = (path: string, content = ''): GeneratedFile => ({ path, content });
+const mk = (path: string, content = ''): GeneratedFile => ({
+  path,
+  content,
+  language: path.endsWith('.tsx') ? 'tsx' : path.endsWith('.ts') ? 'ts' : 'text',
+});
 
 describe('contextualActions — dynamic suggestions per project type', () => {
   it('LANDING: detects landing and surfaces hero/pricing/testimonials/CTA', () => {
