@@ -8,7 +8,9 @@ export type AppKind =
   | 'crm'
   | 'notes'
   | 'marketplace'
-  | 'saas';
+  | 'saas'
+  | 'admin'
+  | 'mobile';
 
 export interface QuickAction {
   id: string;
@@ -49,28 +51,76 @@ export interface QuickAction {
 }
 
 /**
+ * Optional extra signals fed into the detector. All fields are optional so
+ * existing call sites (that only pass name + files) keep working.
+ */
+export interface DetectionContext {
+  description?: string;
+  /** Last user message in the chat — captures live intent ("agrega carrito"). */
+  lastUserPrompt?: string;
+}
+
+/** Score-based detector. Each kind accumulates points from multiple signals. */
+function score(haystack: string, words: string[]): number {
+  let n = 0;
+  for (const w of words) {
+    if (!w) continue;
+    // Word-boundary-ish check: count occurrences as substring (cheap + good enough).
+    const idx = haystack.indexOf(w);
+    if (idx >= 0) n += 1;
+  }
+  return n;
+}
+
+const KIND_KEYWORDS: Record<Exclude<AppKind, 'unknown'>, string[]> = {
+  pos: ['pos', 'punto de venta', 'carrito', 'checkout', 'cart', 'caja', 'inventario', 'tpv', 'venta'],
+  crm: ['crm', 'leads', 'lead ', 'contactos', 'pipeline', 'deals', 'oportunidad', 'kanban'],
+  marketplace: ['marketplace', 'listings', 'sellers', 'vendedores', 'catálogo', 'catalogo', 'producto', 'tienda'],
+  notes: ['notes', 'notas', 'markdown editor', 'note app', 'apuntes', 'editor'],
+  dashboard: ['dashboard', 'analytics', 'kpi', 'charts', 'gráficos', 'graficos', 'métricas', 'metricas', 'panel'],
+  landing: ['landing', 'hero ', 'pricing', 'testimonials', 'testimonios', 'cta', 'lead magnet'],
+  saas: ['saas', 'subscription', 'tenants', 'workspace', 'plan ', 'suscripción', 'suscripcion', 'multi-tenant'],
+  admin: ['admin', 'administraci', 'backoffice', 'gestión', 'gestion', 'usuarios', 'roles'],
+  mobile: ['pwa', 'móvil', 'movil', 'mobile app', 'app móvil', 'instalable', 'offline'],
+};
+
+/**
  * Heuristic detector — looks at the project name and the file paths/contents
  * of the current generated app to infer what the user is building. Only used
  * to pick relevant quick-action prompts; never persisted.
  */
-export function detectAppKind(projectName: string, files: GeneratedFile[]): AppKind {
+export function detectAppKind(
+  projectName: string,
+  files: GeneratedFile[],
+  ctx: DetectionContext = {},
+): AppKind {
+  const safeFiles = Array.isArray(files) ? files : [];
   const haystack = [
-    projectName.toLowerCase(),
-    ...files.map((f) => f.path.toLowerCase()),
-    // Sample a slice of file content so we don't blow the heuristic up on huge apps.
-    ...files.slice(0, 12).map((f) => (f.content || '').slice(0, 400).toLowerCase()),
+    String(projectName ?? '').toLowerCase(),
+    String(ctx.description ?? '').toLowerCase(),
+    // Latest user prompts carry the strongest live intent — weight them x2.
+    String(ctx.lastUserPrompt ?? '').toLowerCase(),
+    String(ctx.lastUserPrompt ?? '').toLowerCase(),
+    ...safeFiles.map((f) => String(f?.path ?? '').toLowerCase()),
+    // Sample first ~12 files' content so we don't blow up on huge apps.
+    ...safeFiles
+      .slice(0, 12)
+      .map((f) => String(f?.content ?? '').slice(0, 400).toLowerCase()),
   ].join(' \n ');
 
-  const has = (...words: string[]) => words.some((w) => haystack.includes(w));
-
-  if (has('pos', 'punto de venta', 'carrito', 'checkout', 'cart')) return 'pos';
-  if (has('crm', 'leads', 'contactos', 'pipeline', 'deals')) return 'crm';
-  if (has('marketplace', 'listings', 'sellers', 'vendedores')) return 'marketplace';
-  if (has('notes', 'notas', 'markdown editor', 'note app')) return 'notes';
-  if (has('dashboard', 'analytics', 'kpi', 'charts', 'gráficos')) return 'dashboard';
-  if (has('landing', 'hero section', 'pricing', 'testimonials')) return 'landing';
-  if (has('saas', 'subscription', 'tenants', 'workspace')) return 'saas';
-  return 'unknown';
+  let bestKind: AppKind = 'unknown';
+  let bestScore = 0;
+  (Object.keys(KIND_KEYWORDS) as Exclude<AppKind, 'unknown'>[]).forEach((kind) => {
+    const s = score(haystack, KIND_KEYWORDS[kind]);
+    // Tie-breaker: prefer the more "specific" verticals over generic ones.
+    const specificityBoost = kind === 'admin' || kind === 'mobile' ? 0 : 0.1;
+    const total = s + (s > 0 ? specificityBoost : 0);
+    if (total > bestScore) {
+      bestScore = total;
+      bestKind = kind;
+    }
+  });
+  return bestKind;
 }
 
 /** Always-useful actions, regardless of app type. */
@@ -310,13 +360,64 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
       prompt: 'Agrega dashboard de cuenta con métricas de uso, miembros del workspace y quick actions de configuración.',
     },
   ],
+  admin: [
+    {
+      id: 'admin-users',
+      label: 'Gestión de usuarios',
+      tone: 'primary',
+      icon: 'users',
+      prompt: 'Agrega CRUD de usuarios con búsqueda, filtro por rol, suspender/activar cuenta, y modal de detalle. Usa la tabla user_roles separada y has_role security definer.',
+    },
+    {
+      id: 'admin-roles',
+      label: 'Permisos por rol',
+      tone: 'accent',
+      icon: 'shield',
+      prompt: 'Agrega gestión de roles (admin/moderator/user) usando una tabla user_roles separada con enum app_role y función has_role SECURITY DEFINER. Aplica las RLS correspondientes.',
+    },
+    {
+      id: 'admin-audit',
+      label: 'Audit log',
+      tone: 'muted',
+      icon: 'history',
+      prompt: 'Agrega un audit log: tabla audit_logs con user_id, action, target, metadata jsonb, created_at. Insertar desde edge functions y mostrarlo en una vista admin con filtros.',
+    },
+  ],
+  mobile: [
+    {
+      id: 'pwa-install',
+      label: 'Hacer instalable',
+      tone: 'primary',
+      icon: 'smartphone',
+      uiAction: 'activate-pwa',
+      prompt: '',
+    },
+    {
+      id: 'mobile-bottom-nav',
+      label: 'Navegación inferior',
+      tone: 'accent',
+      icon: 'layout-dashboard',
+      prompt: 'Agrega una bottom navigation bar fija para móvil (oculta en desktop) con 4 items principales, iconos y estado activo.',
+    },
+    {
+      id: 'mobile-touch',
+      label: 'Optimizar táctil',
+      tone: 'muted',
+      icon: 'smartphone',
+      prompt: 'Aumenta el área tappable de todos los botones (min 44x44), añade :active states con scale-95, y reemplaza tooltips por long-press hints en móvil.',
+    },
+  ],
 };
 
-export function getQuickActions(projectName: string, files: GeneratedFile[]): {
+export function getQuickActions(
+  projectName: string,
+  files: GeneratedFile[],
+  ctx: DetectionContext = {},
+): {
   kind: AppKind;
   actions: QuickAction[];
 } {
-  const kind = detectAppKind(projectName, files);
+  const kind = detectAppKind(projectName, files, ctx);
   const specific = KIND_ACTIONS[kind] ?? [];
   // Specific first, then base. We return up to 12 — the bar shows the first
   // few inline and tucks the rest behind a "Más" popover.

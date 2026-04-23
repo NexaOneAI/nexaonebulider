@@ -73,6 +73,8 @@ const KIND_LABELS: Record<string, string> = {
   notes: 'Notas',
   marketplace: 'Marketplace',
   saas: 'SaaS',
+  admin: 'Admin',
+  mobile: 'PWA',
   unknown: 'App',
 };
 
@@ -93,14 +95,26 @@ export function QuickActionsBar() {
   const sendPrompt = useBuilderStore((s) => s.sendPrompt);
   const toggleChat = useBuilderStore((s) => s.toggleChat);
   const chatOpen = useBuilderStore((s) => s.chatOpen);
+  const messages = useBuilderStore((s) => s.messages);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [githubOpen, setGithubOpen] = useState(false);
   const [deployOpen, setDeployOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
+  // Last user prompt is a strong, live signal of intent. Recompute when it
+  // changes so suggestions follow the conversation, not just the codebase.
+  const lastUserPrompt = useMemo(() => {
+    const safeMsgs = Array.isArray(messages) ? messages : [];
+    for (let i = safeMsgs.length - 1; i >= 0; i -= 1) {
+      const m = safeMsgs[i];
+      if (m && m.role === 'user' && typeof m.content === 'string') return m.content;
+    }
+    return '';
+  }, [messages]);
+
   const { kind, actions } = useMemo(
-    () => getQuickActions(projectName, files),
-    [projectName, files],
+    () => getQuickActions(projectName, files, { lastUserPrompt }),
+    [projectName, files, lastUserPrompt],
   );
 
   if (files.length === 0) return null;

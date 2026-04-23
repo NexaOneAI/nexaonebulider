@@ -22,13 +22,24 @@ export function QuickActions() {
   const projectName = useBuilderStore((s) => s.projectName);
   const loading = useBuilderStore((s) => s.loading);
   const sendPrompt = useBuilderStore((s) => s.sendPrompt);
+  const messages = useBuilderStore((s) => s.messages);
+
+  const lastUserPrompt = useMemo(() => {
+    const safeMsgs = Array.isArray(messages) ? messages : [];
+    for (let i = safeMsgs.length - 1; i >= 0; i -= 1) {
+      const m = safeMsgs[i];
+      if (m && m.role === 'user' && typeof m.content === 'string') return m.content;
+    }
+    return '';
+  }, [messages]);
 
   const { actions } = useMemo(
-    () => getQuickActions(projectName, files),
-    [projectName, files],
+    () => getQuickActions(projectName, files, { lastUserPrompt }),
+    [projectName, files, lastUserPrompt],
   );
 
-  if (files.length === 0 || loading || actions.length === 0) return null;
+  const safeFiles = Array.isArray(files) ? files : [];
+  if (safeFiles.length === 0 || loading || actions.length === 0) return null;
 
   return (
     <div className="border-t border-border/30 px-3 py-2">
