@@ -16,10 +16,16 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+// Use safe placeholder values when env is missing so the module load NEVER throws.
+// Any actual API call will fail (auth flows surface the error in UI) but the React
+// tree mounts successfully and the ErrorBoundary / Login screen can render.
+const SAFE_URL = SUPABASE_URL || 'https://placeholder.supabase.co';
+const SAFE_KEY = SUPABASE_PUBLISHABLE_KEY || 'placeholder-key';
+
+export const supabase = createClient<Database>(SAFE_URL, SAFE_KEY, {
   auth: {
-    storage: localStorage,
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     persistSession: true,
     autoRefreshToken: true,
-  }
+  },
 });
