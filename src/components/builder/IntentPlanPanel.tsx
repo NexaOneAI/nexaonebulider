@@ -82,6 +82,7 @@ export function IntentPlanPanel() {
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
   /**
    * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
    * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
