@@ -11,6 +11,11 @@ import {
   ChevronUp,
   Wand2,
   AlertTriangle,
+  GitCompare,
+  FilePlus2,
+  FileCog,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
