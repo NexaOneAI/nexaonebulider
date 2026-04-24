@@ -328,3 +328,8 @@ export function acceptedIds(mem: NexaMemory): Set<string> {
   });
   return ids;
 }
+
+/** Anexa un evento al log estructurado del proyecto. */
+export function recordLogEvent(mem: NexaMemory, evento: NexaLogEvento): NexaMemory {
+  return { ...mem, nexa_logs: [...mem.nexa_logs, evento] };
+}
