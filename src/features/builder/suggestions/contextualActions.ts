@@ -539,13 +539,18 @@ export function getQuickActions(
   kind: AppKind;
   actions: QuickAction[];
   signals: ProjectSignals;
+  level: ProjectLevel;
 } {
   const kind = detectAppKind(projectName, files, ctx);
   const signals = detectProjectSignals(files);
+  const level = obtenerNivelProyecto({ kind, signals });
   const specific = KIND_ACTIONS[kind] ?? [];
+  const levelActions = LEVEL_ACTIONS[kind]?.[level] ?? [];
 
-  // 1. Combine specific (vertical) + base (always-useful).
-  const combined = [...specific, ...BASE_ACTIONS];
+  // 1. Progress-aware first (most contextual), then vertical, then base.
+  //    Level actions describe the *next logical step* given current progress
+  //    (POS without products → "crear catálogo"; POS with cart → "ventas").
+  const combined = [...levelActions, ...specific, ...BASE_ACTIONS];
 
   // 2. Filter out actions that are already satisfied by the current code.
   //    This is what makes suggestions truly *change* as the project evolves:
@@ -592,5 +597,5 @@ export function getQuickActions(
     if (actions.length >= 12) break;
   }
 
-  return { kind, actions, signals };
+  return { kind, actions, signals, level };
 }
