@@ -213,8 +213,12 @@ export function QuickActionsBar() {
       <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         <Sparkles className="h-3 w-3 text-primary" />
         <span className="hidden sm:inline">Copiloto</span>
-        <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary">
-          {KIND_LABELS[kind] ?? 'App'}
+        <span
+          data-testid="detected-kind"
+          className="rounded border border-primary/40 bg-primary/15 px-2 py-0.5 text-[10px] font-bold text-primary"
+          title="Tipo de proyecto detectado automáticamente desde nombre, archivos y conversación"
+        >
+          Tipo detectado: {KIND_LABELS[kind] ?? 'App'}
         </span>
       </div>
 
