@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useBuilder } from '@/hooks/useBuilder';
 import { ProjectHeader } from '@/components/builder/ProjectHeader';
 import { QuickActionsBar } from '@/components/builder/QuickActionsBar';
+import { IntentPlanPanel } from '@/components/builder/IntentPlanPanel';
 import { FileTree } from '@/components/builder/FileTree';
 import { PreviewPanel } from '@/components/builder/PreviewPanel';
 import { ChatPanel } from '@/components/builder/ChatPanel';
@@ -57,6 +58,7 @@ export default function Builder() {
   return (
     <div className="flex h-screen flex-col bg-background">
       <ProjectHeader onToggleHistory={() => setHistoryOpen((o) => !o)} historyOpen={historyOpen} />
+      <IntentPlanPanel />
       <QuickActionsBar />
       <div className="relative flex flex-1 overflow-hidden">
         {sidebarOpen && <FileTree />}
