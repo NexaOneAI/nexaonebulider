@@ -22,6 +22,7 @@ import { useBuilderStore } from '@/features/builder/builderStore';
 import {
   analyzeProject,
   RISK_LABELS,
+  planToJson,
   type IntentPlan,
   type IntentSnapshot,
 } from '@/features/builder/intent/intentEngine';
