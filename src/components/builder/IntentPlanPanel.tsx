@@ -608,13 +608,54 @@ export function IntentPlanPanel() {
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <Coins className="mx-auto mb-1 h-3.5 w-3.5" />
-                {plan.estimatedCredits === 0 ? 'Gratis' : `~${plan.estimatedCredits} créditos`}
+                {(() => {
+                  const useRefined =
+                    aiRefinement && aiRefinement.planId === plan.action.id;
+                  const value = useRefined ? aiRefinement.credits : plan.estimatedCredits;
+                  return (
+                    <span title={useRefined ? `Refinado: ${aiRefinement.complexity}` : 'Heurística local'}>
+                      {value === 0 ? 'Gratis' : `~${value} créditos`}
+                      {useRefined && (
+                        <span className="ml-1 rounded bg-primary/20 px-1 text-[9px] text-primary">
+                          IA
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <FileEdit className="mx-auto mb-1 h-3.5 w-3.5" />
                 {createdCount + modifiedCount} archivo
                 {createdCount + modifiedCount !== 1 ? 's' : ''}
               </div>
+            </div>
+
+            {/* Modo híbrido — análisis bajo demanda, sin gasto automático */}
+            <div className="flex items-center justify-between rounded-md border border-border/60 bg-card/40 px-3 py-2 text-[11px]">
+              <div className="flex items-center gap-2">
+                <Brain className="h-3.5 w-3.5 text-primary" />
+                <span className="text-muted-foreground">
+                  Estimación local activa.{' '}
+                  <span className="text-foreground">
+                    Refina sin consumir créditos de IA si lo necesitas.
+                  </span>
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAnalyzeWithAi}
+                disabled={aiAnalyzing}
+                className="h-7 gap-1.5"
+              >
+                {aiAnalyzing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Brain className="h-3 w-3" />
+                )}
+                Analizar con IA
+              </Button>
             </div>
 
             {/* Cambios conceptuales */}
