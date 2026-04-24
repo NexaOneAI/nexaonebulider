@@ -99,6 +99,26 @@ export interface ProjectSignals {
   hasCharts: boolean;
   hasInventory: boolean;
   hasPayments: boolean;
+  // POS-specific progress signals
+  hasProducts: boolean;
+  hasCheckout: boolean;
+  hasSales: boolean;
+  hasReports: boolean;
+  // Landing progress signals
+  hasHero: boolean;
+  hasPricing: boolean;
+  hasTestimonials: boolean;
+  hasCta: boolean;
+  // SaaS progress signals
+  hasDashboard: boolean;
+  hasWorkspaces: boolean;
+  hasBilling: boolean;
+  // Marketplace progress signals
+  hasListings: boolean;
+  hasProductDetail: boolean;
+  // Dashboard progress signals
+  hasKpiCards: boolean;
+  hasDataTable: boolean;
 }
 
 /** Cheap content-based capability detector. Runs on every render — no cache. */
@@ -125,6 +145,21 @@ export function detectProjectSignals(files: GeneratedFile[]): ProjectSignals {
     hasCharts: has('recharts', 'chart.js', '<linechart', '<barchart', 'd3-'),
     hasInventory: has('inventory', 'inventario', 'stock'),
     hasPayments: has('stripe', 'mercadopago', 'paddle', 'create-payment'),
+    hasProducts: has('product', 'producto', 'catalog', 'catálogo', 'catalogo', 'menu', 'menú'),
+    hasCheckout: has('checkout', 'cobrar', 'pagar', 'payment', 'tpv'),
+    hasSales: has('sale', 'venta', 'order', 'pedido', 'ticket', 'invoice'),
+    hasReports: has('report', 'reporte', 'analytics', 'estadística', 'estadistica', 'summary'),
+    hasHero: has('hero', '<section', 'landing', 'banner'),
+    hasPricing: has('pricing', 'precios', 'plan', 'tarifas'),
+    hasTestimonials: has('testimonial', 'testimonio', 'reviews', 'reseña', 'resena'),
+    hasCta: has('cta', 'call-to-action', 'newsletter', 'subscribe', 'suscrib'),
+    hasDashboard: has('/dashboard', 'dashboard.tsx', 'dashboard.jsx'),
+    hasWorkspaces: has('workspace', 'tenant', 'organization', 'organización', 'organizacion'),
+    hasBilling: has('billing', 'subscription', 'suscripción', 'suscripcion', 'plan_'),
+    hasListings: has('listing', 'product-card', 'productcard', 'grid'),
+    hasProductDetail: has('product/[', 'product-detail', '/product/', 'productdetail'),
+    hasKpiCards: has('kpi', 'metric-card', 'metriccard', 'stat-card', 'statcard'),
+    hasDataTable: has('<table', 'datatable', 'data-table', 'tanstack/table'),
   };
 }
 
