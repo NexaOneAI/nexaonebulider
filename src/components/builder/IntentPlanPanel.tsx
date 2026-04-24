@@ -771,6 +771,15 @@ export function IntentPlanPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Historial de eventos IA — trazabilidad completa */}
+      {projectId && (
+        <NexaEventLogPanel
+          open={logsOpen}
+          onClose={() => setLogsOpen(false)}
+          projectId={projectId}
+        />
+      )}
     </div>
   );
 }
