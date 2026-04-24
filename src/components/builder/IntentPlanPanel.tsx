@@ -89,15 +89,12 @@ export function IntentPlanPanel() {
     syncContext({ kind: result.kind, level: result.level }).catch(() => {});
   }, [projectName, files, lastUserPrompt, acceptedIds, syncContext]);
 
-  if (!snap || files.length === 0 || !snap.primary) return null;
-
-  const busy = loading || streaming;
-  const plan = snap.primary;
-
   // Preview diff ANTES vs DESPUÉS — clasifica cada archivo afectado.
+  // (Hooks SIEMPRE antes de cualquier early return.)
   const existingPaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
+  const planFiles = snap?.primary?.filesAffected ?? [];
   const diffEntries = useMemo(() => {
-    return plan.filesAffected.map((path) => {
+    return planFiles.map((path) => {
       const isPlaceholder = path.includes('<new>');
       const exists = !isPlaceholder && existingPaths.has(path);
       return {
@@ -105,7 +102,12 @@ export function IntentPlanPanel() {
         kind: exists ? ('modified' as const) : ('created' as const),
       };
     });
-  }, [plan.filesAffected, existingPaths]);
+  }, [planFiles, existingPaths]);
+
+  if (!snap || files.length === 0 || !snap.primary) return null;
+
+  const busy = loading || streaming;
+  const plan = snap.primary;
   const createdCount = diffEntries.filter((d) => d.kind === 'created').length;
   const modifiedCount = diffEntries.filter((d) => d.kind === 'modified').length;
 
