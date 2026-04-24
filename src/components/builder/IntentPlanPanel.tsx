@@ -163,12 +163,27 @@ export function IntentPlanPanel() {
       toast.info('Revisa el impacto antes de aplicar el cambio');
       return;
     }
+    const json = planToJson(p);
     // Acción especial PWA — no consume créditos, no pasa por LLM.
     if (p.action.uiAction === 'activate-pwa') {
       try {
         await activatePwaForCurrentProject();
         toast.success('PWA activada');
+        recordIntentAudit({
+          eventType: 'apply',
+          projectId,
+          planJson: json,
+          metadata: { uiAction: 'activate-pwa' },
+        });
       } catch (e) {
+        recordIntentAudit({
+          eventType: 'apply_failed',
+          projectId,
+          planJson: json,
+          status: 'failed',
+          errorMessage: e instanceof Error ? e.message : String(e),
+          metadata: { uiAction: 'activate-pwa' },
+        });
         toast.error(e instanceof Error ? e.message : 'Error activando PWA');
       }
       return;
@@ -185,7 +200,25 @@ export function IntentPlanPanel() {
         credits: p.estimatedCredits,
         actionId: p.action.id,
       });
+      recordIntentAudit({
+        eventType: 'apply',
+        projectId,
+        planJson: json,
+        metadata: {
+          actionId: p.action.id,
+          module: p.module,
+          estimatedCredits: p.estimatedCredits,
+        },
+      });
     } catch (e) {
+      recordIntentAudit({
+        eventType: 'apply_failed',
+        projectId,
+        planJson: json,
+        status: 'failed',
+        errorMessage: e instanceof Error ? e.message : String(e),
+        metadata: { actionId: p.action.id, module: p.module },
+      });
       toast.error(e instanceof Error ? e.message : 'Error al implementar');
     }
   };
@@ -210,6 +243,17 @@ export function IntentPlanPanel() {
       await loadVersion(target.id);
       toast.success(`Revertido a v${target.version_number}`);
       await registerRevert(`Revertido a v${target.version_number}`);
+      recordIntentAudit({
+        eventType: 'revert',
+        projectId,
+        planJson: {
+          accion: `Revertir a v${target.version_number}`,
+          archivos: [],
+          cambios: ['restaurar versión anterior'],
+          riesgo: 'bajo',
+        },
+        metadata: { versionId: target.id, versionNumber: target.version_number },
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al revertir');
     } finally {
