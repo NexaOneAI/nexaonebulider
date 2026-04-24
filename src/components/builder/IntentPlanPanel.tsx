@@ -80,6 +80,17 @@ export function IntentPlanPanel() {
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  /**
+   * Refinamiento opcional desde el endpoint estimate-cost (heurístico server-side).
+   * Solo se llama cuando el usuario pulsa "Analizar con IA". Si falla, mantenemos
+   * la estimación local para no bloquear al usuario y NO gastar créditos extra.
+   */
+  const [aiRefinement, setAiRefinement] = useState<{
+    credits: number;
+    complexity: string;
+    planId: string;
+  } | null>(null);
   /**
    * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
    * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
