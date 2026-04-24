@@ -20,6 +20,26 @@ const MEM_START = '<!-- NEXA_MEMORY_START -->';
 const MEM_END = '<!-- NEXA_MEMORY_END -->';
 const MEM_BLOCK_RE = new RegExp(`${MEM_START}[\\s\\S]*?${MEM_END}`, 'g');
 const MAX_HISTORY = 40;
+const MAX_LOGS = 100;
+
+// ---------------------------------------------------------------------------
+// Logging estructurado de eventos IA — vive dentro de NexaMemory.nexa_logs.
+// ---------------------------------------------------------------------------
+
+export type NexaLogTipo = 'plan_aplicado' | 'error' | 'analisis';
+export type NexaLogResultado = 'success' | 'fail';
+
+export interface NexaLogEvento {
+  tipo: NexaLogTipo;
+  accion: string;
+  archivos: string[];
+  resultado: NexaLogResultado;
+  duracion_ms: number;
+  timestamp: string; // ISO
+  proyectoId: string;
+  /** Detalles libres (módulo, créditos, error, etc.) */
+  meta?: Record<string, unknown>;
+}
 
 export interface InstalledModule {
   /** id lógico ("catalog", "cart", "auth", ...) */
@@ -84,6 +104,8 @@ export interface NexaMemory {
   decisions: ProjectDecision[];
   /** Historial cronológico (cap MAX_HISTORY) */
   history: MemoryActionEntry[];
+  /** Log estructurado de eventos IA (apply/analysis/error). */
+  nexa_logs: NexaLogEvento[];
   /** ISO timestamp del último cambio */
   updatedAt: string;
 }
@@ -97,6 +119,7 @@ export function emptyMemory(): NexaMemory {
     acceptedSuggestions: [],
     decisions: [],
     history: [],
+    nexa_logs: [],
     updatedAt: new Date().toISOString(),
   };
 }
