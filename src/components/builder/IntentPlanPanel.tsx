@@ -611,6 +611,18 @@ export function IntentPlanPanel() {
               )}
               Revertir último cambio
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setLogsOpen(true)}
+              disabled={!projectId}
+              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+              data-testid="intent-view-logs"
+              title="Ver historial de eventos IA"
+            >
+              <ScrollText className="h-3.5 w-3.5" />
+              Historial
+            </Button>
 
             {snap.alternatives.length > 0 && (
               <div className="ml-auto flex items-center gap-1 overflow-x-auto">
