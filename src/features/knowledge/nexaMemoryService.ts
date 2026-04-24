@@ -140,6 +140,7 @@ export function parseMemoryFromContent(content: string | null | undefined): Nexa
       acceptedSuggestions: Array.isArray(parsed.acceptedSuggestions) ? parsed.acceptedSuggestions : [],
       decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
       history: Array.isArray(parsed.history) ? parsed.history : [],
+      nexa_logs: Array.isArray(parsed.nexa_logs) ? parsed.nexa_logs : [],
     };
   } catch {
     return emptyMemory();
