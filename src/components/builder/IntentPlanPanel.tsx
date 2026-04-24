@@ -21,6 +21,7 @@ import {
   Check,
   ScanSearch,
   Lock,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ import {
 } from '@/features/builder/intent/intentEngine';
 import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction';
 import { versionsService } from '@/features/projects/versionsService';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
@@ -78,6 +80,17 @@ export function IntentPlanPanel() {
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  /**
+   * Refinamiento opcional desde el endpoint estimate-cost (heurístico server-side).
+   * Solo se llama cuando el usuario pulsa "Analizar con IA". Si falla, mantenemos
+   * la estimación local para no bloquear al usuario y NO gastar créditos extra.
+   */
+  const [aiRefinement, setAiRefinement] = useState<{
+    credits: number;
+    complexity: string;
+    planId: string;
+  } | null>(null);
   /**
    * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
    * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
@@ -145,6 +158,37 @@ export function IntentPlanPanel() {
       setTimeout(() => setCopied(false), 1500);
     } catch {
       toast.error('No se pudo copiar');
+    }
+  };
+
+  /**
+   * Modo híbrido — refinamiento opcional bajo demanda.
+   * Llama a estimate-cost (heurística server, 0 créditos) con el prompt real
+   * del módulo. Si la respuesta llega, mostramos la nueva estimación; si falla,
+   * caemos en silencio a la estimación local. Nunca consume créditos del LLM.
+   */
+  const handleAnalyzeWithAi = async () => {
+    if (aiAnalyzing) return;
+    setAiAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('estimate-cost', {
+        body: { prompt: plan.prompt, mode: 'edit' },
+      });
+      if (error) throw error;
+      const credits = Number(data?.cost ?? data?.credits);
+      if (!Number.isFinite(credits)) throw new Error('Respuesta inválida');
+      setAiRefinement({
+        credits,
+        complexity: String(data?.complexity ?? 'estimación'),
+        planId: plan.action.id,
+      });
+      toast.success('Análisis refinado sin gastar créditos de IA');
+    } catch (e) {
+      // Fallback silencioso: mantenemos la heurística local.
+      toast.info('No se pudo refinar con IA — usando estimación local');
+      console.warn('[intent] estimate-cost fallback', e);
+    } finally {
+      setAiAnalyzing(false);
     }
   };
 
@@ -564,13 +608,54 @@ export function IntentPlanPanel() {
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <Coins className="mx-auto mb-1 h-3.5 w-3.5" />
-                {plan.estimatedCredits === 0 ? 'Gratis' : `~${plan.estimatedCredits} créditos`}
+                {(() => {
+                  const useRefined =
+                    aiRefinement && aiRefinement.planId === plan.action.id;
+                  const value = useRefined ? aiRefinement.credits : plan.estimatedCredits;
+                  return (
+                    <span title={useRefined ? `Refinado: ${aiRefinement.complexity}` : 'Heurística local'}>
+                      {value === 0 ? 'Gratis' : `~${value} créditos`}
+                      {useRefined && (
+                        <span className="ml-1 rounded bg-primary/20 px-1 text-[9px] text-primary">
+                          IA
+                        </span>
+                      )}
+                    </span>
+                  );
+                })()}
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <FileEdit className="mx-auto mb-1 h-3.5 w-3.5" />
                 {createdCount + modifiedCount} archivo
                 {createdCount + modifiedCount !== 1 ? 's' : ''}
               </div>
+            </div>
+
+            {/* Modo híbrido — análisis bajo demanda, sin gasto automático */}
+            <div className="flex items-center justify-between rounded-md border border-border/60 bg-card/40 px-3 py-2 text-[11px]">
+              <div className="flex items-center gap-2">
+                <Brain className="h-3.5 w-3.5 text-primary" />
+                <span className="text-muted-foreground">
+                  Estimación local activa.{' '}
+                  <span className="text-foreground">
+                    Refina sin consumir créditos de IA si lo necesitas.
+                  </span>
+                </span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAnalyzeWithAi}
+                disabled={aiAnalyzing}
+                className="h-7 gap-1.5"
+              >
+                {aiAnalyzing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Brain className="h-3 w-3" />
+                )}
+                Analizar con IA
+              </Button>
             </div>
 
             {/* Cambios conceptuales */}
