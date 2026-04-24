@@ -16,6 +16,9 @@ import {
   FileCog,
   Eye,
   EyeOff,
+  Code2,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
