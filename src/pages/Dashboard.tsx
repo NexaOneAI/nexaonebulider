@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,11 +17,45 @@ const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
 type EstadoProyecto = {
   tipo?: 'landing' | 'saas' | 'dashboard' | 'marketplace' | 'pos';
+  nombre?: string;
+  archivos?: string[];
+  rutas?: string[];
 };
 
 type SugerenciaUI = {
   titulo: string;
 };
+
+/**
+ * Auto-detecta el tipo de proyecto a partir de su estado real:
+ * - nombre
+ * - archivos
+ * - rutas
+ * - palabras clave en cualquiera de los anteriores
+ * Devuelve el tipo o 'unknown' si no hay señales suficientes.
+ */
+function detectarTipoProyecto(state: EstadoProyecto): EstadoProyecto['tipo'] | 'unknown' {
+  const nombre = (state?.nombre ?? '').toLowerCase();
+  const archivos = (state?.archivos ?? []).join(' ').toLowerCase();
+  const rutas = (state?.rutas ?? []).join(' ').toLowerCase();
+  const haystack = `${nombre} ${archivos} ${rutas}`;
+
+  if (!haystack.trim()) return 'unknown';
+
+  const has = (...words: string[]) => words.some((w) => haystack.includes(w));
+
+  if (has('venta', 'pos', 'caja', 'tpv', 'punto de venta')) return 'pos';
+  if (has('producto', 'catalogo', 'catálogo', 'marketplace', 'tienda', 'ecommerce', 'sellers', 'vendedor'))
+    return 'marketplace';
+  if (has('login', 'auth', 'workspace', 'tenant', 'subscription', 'suscripci', 'saas', 'plan', 'billing'))
+    return 'saas';
+  if (has('dashboard', 'kpi', 'analytics', 'chart', 'metric', 'panel'))
+    return 'dashboard';
+  if (has('landing', 'hero', 'pricing', 'cta', 'testimonial', 'lead'))
+    return 'landing';
+
+  return 'unknown';
+}
 
 function obtenerSugerencias(state: EstadoProyecto): SugerenciaUI[] {
   if (!state?.tipo) return [{ titulo: 'Analizar proyecto' }];
@@ -64,6 +98,57 @@ function obtenerSugerencias(state: EstadoProyecto): SugerenciaUI[] {
   return [{ titulo: 'Analizar proyecto' }];
 }
 
+// Proyectos demo para probar la auto-detección sin tener que crear un proyecto real.
+// Cada uno aporta nombre + archivos + rutas distintos. El tipo NO se setea a mano:
+// detectarTipoProyecto() lo infiere.
+const PROYECTOS_DEMO: { id: string; etiqueta: string; estado: EstadoProyecto }[] = [
+  {
+    id: 'demo-landing',
+    etiqueta: 'Demo: Landing',
+    estado: {
+      nombre: 'Mi Landing Startup',
+      archivos: ['src/pages/Index.tsx', 'src/components/Hero.tsx', 'src/components/Pricing.tsx'],
+      rutas: ['/'],
+    },
+  },
+  {
+    id: 'demo-saas',
+    etiqueta: 'Demo: SaaS',
+    estado: {
+      nombre: 'Mi SaaS Workspace',
+      archivos: ['src/pages/Login.tsx', 'src/pages/Billing.tsx', 'src/features/workspace/ws.ts'],
+      rutas: ['/login', '/dashboard', '/billing'],
+    },
+  },
+  {
+    id: 'demo-pos',
+    etiqueta: 'Demo: POS',
+    estado: {
+      nombre: 'POS Tienda',
+      archivos: ['src/pages/Pos.tsx', 'src/components/Cart.tsx'],
+      rutas: ['/pos', '/ventas'],
+    },
+  },
+  {
+    id: 'demo-marketplace',
+    etiqueta: 'Demo: Marketplace',
+    estado: {
+      nombre: 'Marketplace de Vendedores',
+      archivos: ['src/pages/Productos.tsx', 'src/features/sellers/seller.ts'],
+      rutas: ['/productos', '/vendedores'],
+    },
+  },
+  {
+    id: 'demo-dashboard',
+    etiqueta: 'Demo: Dashboard',
+    estado: {
+      nombre: 'Panel de Analytics',
+      archivos: ['src/pages/Dashboard.tsx', 'src/components/Chart.tsx'],
+      rutas: ['/dashboard', '/metrics'],
+    },
+  },
+];
+
 export default function Dashboard() {
   const auth = useAuth();
   const projectsHook = useProjects();
@@ -71,7 +156,8 @@ export default function Dashboard() {
   const projects = Array.isArray(projectsHook?.projects) ? projectsHook.projects : [];
   const navigate = useNavigate();
   const [galleryOpen, setGalleryOpen] = useState(false);
-  const [projectState, setProjectState] = useState<EstadoProyecto>({});
+  const [proyectoActivoId, setProyectoActivoId] = useState<string>('demo-landing');
+  const [override, setOverride] = useState<EstadoProyecto['tipo'] | null>(null);
   const [sugerencias, setSugerencias] = useState<SugerenciaUI[]>([]);
   const onboarding = useOnboarding();
   const onboardingOpen = !!onboarding?.open;
@@ -82,6 +168,30 @@ export default function Dashboard() {
   const fullName = safe<string>(profile, 'full_name', '') || 'Builder';
   const credits = safe<number>(profile, 'credits', 0) ?? 0;
   const plan = (safe<string>(profile, 'plan', 'free') ?? 'free').toUpperCase();
+
+  // Estado base del proyecto activo (lo que vendría del backend al abrir un
+  // proyecto real). El tipo NO viene en este objeto: lo derivamos.
+  const estadoBase = useMemo<EstadoProyecto>(() => {
+    const found = PROYECTOS_DEMO.find((p) => p.id === proyectoActivoId);
+    return found?.estado ?? {};
+  }, [proyectoActivoId]);
+
+  // Detección automática — sin clicks. Cambia con cualquier cambio en estadoBase.
+  const tipoDetectado = useMemo(() => detectarTipoProyecto(estadoBase), [estadoBase]);
+
+  // El override manual solo sirve si el usuario lo pidió explícito.
+  const tipoEfectivo = override ?? tipoDetectado;
+
+  // projectState ya combinado, listo para recalcular sugerencias.
+  const projectState = useMemo<EstadoProyecto>(
+    () => ({ ...estadoBase, tipo: tipoEfectivo === 'unknown' ? undefined : tipoEfectivo }),
+    [estadoBase, tipoEfectivo],
+  );
+
+  // Si cambia el proyecto activo, descarto el override (vuelve a auto).
+  useEffect(() => {
+    setOverride(null);
+  }, [proyectoActivoId]);
 
   useEffect(() => {
     const nuevas = obtenerSugerencias(projectState);
@@ -132,30 +242,82 @@ export default function Dashboard() {
             <div>
               <h2 className="text-lg font-semibold">Sugerencias dinámicas</h2>
               <p className="text-sm text-muted-foreground">
-                Haz click en los botones y las sugerencias cambian en tiempo real.
+                El tipo se detecta solo desde nombre, archivos y rutas. Cambia
+                de proyecto y las sugerencias cambian sin hacer click.
               </p>
             </div>
-            <div className="rounded-md border border-border bg-muted/40 px-3 py-1 text-xs font-medium">
-              {projectState.tipo ? `Tipo activo: ${projectState.tipo}` : 'Tipo activo: ninguno'}
+            <div className="text-right">
+              <div className="rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                Detectado: {tipoDetectado}
+              </div>
+              {override && (
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  override manual: {override}{' '}
+                  <button
+                    type="button"
+                    className="underline hover:text-foreground"
+                    onClick={() => setOverride(null)}
+                  >
+                    quitar
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="mb-4 flex flex-wrap gap-2">
-            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'landing' })}>
-              Landing
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'saas' })}>
-              SaaS
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'dashboard' })}>
-              Dashboard
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'marketplace' })}>
-              Marketplace
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'pos' })}>
-              POS
-            </Button>
+          {/* Selector de proyecto activo (simula cambiar de proyecto en el dashboard).
+              No selecciona el TIPO: solo cambia los inputs (nombre/archivos/rutas)
+              y la detección automática hace el resto. */}
+          <div className="mb-3">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Proyecto activo
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {PROYECTOS_DEMO.map((p) => (
+                <Button
+                  key={p.id}
+                  variant={p.id === proyectoActivoId ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setProyectoActivoId(p.id)}
+                >
+                  {p.etiqueta}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mb-4 rounded-md border border-border/50 bg-muted/30 p-3 text-xs">
+            <div className="text-muted-foreground">
+              <span className="font-semibold text-foreground">Nombre:</span> {estadoBase.nombre}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              <span className="font-semibold text-foreground">Archivos:</span>{' '}
+              {(estadoBase.archivos ?? []).join(', ')}
+            </div>
+            <div className="mt-1 text-muted-foreground">
+              <span className="font-semibold text-foreground">Rutas:</span>{' '}
+              {(estadoBase.rutas ?? []).join(', ')}
+            </div>
+          </div>
+
+          {/* Override manual opcional — solo si el usuario quiere forzar otro tipo. */}
+          <div className="mb-4">
+            <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Override manual (opcional)
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {(['landing', 'saas', 'dashboard', 'marketplace', 'pos'] as const).map((t) => (
+                <Button
+                  key={t}
+                  variant={override === t ? 'secondary' : 'ghost'}
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => setOverride(t)}
+                >
+                  {t}
+                </Button>
+              ))}
+            </div>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
