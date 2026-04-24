@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell } from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
@@ -15,6 +15,55 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 
 const fadeUp = { hidden: { opacity: 0, y: 12 }, visible: { opacity: 1, y: 0 } };
 
+type EstadoProyecto = {
+  tipo?: 'landing' | 'saas' | 'dashboard' | 'marketplace' | 'pos';
+};
+
+type SugerenciaUI = {
+  titulo: string;
+};
+
+function obtenerSugerencias(state: EstadoProyecto): SugerenciaUI[] {
+  if (!state?.tipo) return [{ titulo: 'Analizar proyecto' }];
+
+  if (state.tipo === 'landing') {
+    return [
+      { titulo: 'Agregar sección hero' },
+      { titulo: 'Optimizar SEO' },
+    ];
+  }
+
+  if (state.tipo === 'saas') {
+    return [
+      { titulo: 'Agregar login' },
+      { titulo: 'Dashboard de usuario' },
+    ];
+  }
+
+  if (state.tipo === 'dashboard') {
+    return [
+      { titulo: 'Agregar métricas KPI' },
+      { titulo: 'Mostrar gráficos' },
+    ];
+  }
+
+  if (state.tipo === 'marketplace') {
+    return [
+      { titulo: 'Agregar catálogo' },
+      { titulo: 'Activar checkout' },
+    ];
+  }
+
+  if (state.tipo === 'pos') {
+    return [
+      { titulo: 'Mejorar carrito' },
+      { titulo: 'Control de inventario' },
+    ];
+  }
+
+  return [{ titulo: 'Analizar proyecto' }];
+}
+
 export default function Dashboard() {
   const auth = useAuth();
   const projectsHook = useProjects();
@@ -22,6 +71,8 @@ export default function Dashboard() {
   const projects = Array.isArray(projectsHook?.projects) ? projectsHook.projects : [];
   const navigate = useNavigate();
   const [galleryOpen, setGalleryOpen] = useState(false);
+  const [projectState, setProjectState] = useState<EstadoProyecto>({});
+  const [sugerencias, setSugerencias] = useState<SugerenciaUI[]>([]);
   const onboarding = useOnboarding();
   const onboardingOpen = !!onboarding?.open;
   const setOnboardingOpen = onboarding?.setOpen ?? (() => {});
@@ -31,6 +82,11 @@ export default function Dashboard() {
   const fullName = safe<string>(profile, 'full_name', '') || 'Builder';
   const credits = safe<number>(profile, 'credits', 0) ?? 0;
   const plan = (safe<string>(profile, 'plan', 'free') ?? 'free').toUpperCase();
+
+  useEffect(() => {
+    const nuevas = obtenerSugerencias(projectState);
+    setSugerencias(nuevas);
+  }, [projectState]);
 
   return (
     <AppShell>
@@ -69,6 +125,46 @@ export default function Dashboard() {
           <Button variant="outline" onClick={reopen}>
             <HelpCircle className="mr-2 h-4 w-4" /> Ver tour inicial
           </Button>
+        </div>
+
+        <div className="mb-8 rounded-xl border border-border/50 bg-card p-5 shadow-card">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Sugerencias dinámicas</h2>
+              <p className="text-sm text-muted-foreground">
+                Haz click en los botones y las sugerencias cambian en tiempo real.
+              </p>
+            </div>
+            <div className="rounded-md border border-border bg-muted/40 px-3 py-1 text-xs font-medium">
+              {projectState.tipo ? `Tipo activo: ${projectState.tipo}` : 'Tipo activo: ninguno'}
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'landing' })}>
+              Landing
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'saas' })}>
+              SaaS
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'dashboard' })}>
+              Dashboard
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'marketplace' })}>
+              Marketplace
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setProjectState({ tipo: 'pos' })}>
+              POS
+            </Button>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {sugerencias.map((s, i) => (
+              <div key={`${s.titulo}-${i}`} className="rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm">
+                {s.titulo}
+              </div>
+            ))}
+          </div>
         </div>
 
         <h2 className="mb-4 text-xl font-semibold">Proyectos recientes</h2>
