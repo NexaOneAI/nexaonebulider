@@ -19,7 +19,6 @@ import {
   Code2,
   Copy,
   Check,
-  Eye as EyeIcon,
   ScanSearch,
   Lock,
 } from 'lucide-react';
