@@ -378,6 +378,49 @@ export function IntentPlanPanel() {
             </span>
           </div>
 
+          <div className="rounded-md border border-border/60 bg-card/60">
+            <div className="flex items-center gap-2 px-2 py-1.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setShowJson((s) => !s)}
+                className="flex items-center gap-1.5 text-left font-semibold text-foreground hover:text-primary"
+                aria-expanded={showJson}
+              >
+                <Code2 className="h-3 w-3 text-primary" />
+                Plan en JSON
+                <span className="text-muted-foreground">(contrato Nexa One)</span>
+              </button>
+              <div className="ml-auto flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleCopyJson}
+                  className="inline-flex items-center gap-1 rounded border border-border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground hover:bg-muted"
+                  title="Copiar JSON"
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3 text-primary" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
+                  {copied ? 'Copiado' : 'Copiar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowJson((s) => !s)}
+                  className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                >
+                  {showJson ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {showJson ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
+            </div>
+            {showJson && (
+              <pre className="max-h-56 overflow-auto border-t border-border/60 bg-background/60 px-2 py-2 font-mono text-[10px] leading-relaxed text-foreground">
+                {planJsonStr}
+              </pre>
+            )}
+          </div>
+
           {plan.risk === 'high' && (
             <div className="flex items-start gap-1.5 rounded-md border border-destructive/40 bg-destructive/5 px-2 py-1.5 text-[11px] text-destructive">
               <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
