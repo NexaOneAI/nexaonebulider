@@ -102,10 +102,9 @@ export function IntentPlanPanel() {
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
     acceptedIds,
-    registerAccepted,
-    registerModule,
     registerRevert,
     syncContext,
+    registerAppliedPlan,
   } = useNexaMemory(projectId);
 
   const lastUserPrompt = useMemo(() => {
