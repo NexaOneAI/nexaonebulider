@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Sparkles,
   Shield,
@@ -112,10 +112,18 @@ export function QuickActionsBar() {
     return '';
   }, [messages]);
 
-  const { kind, actions } = useMemo(
-    () => getQuickActions(projectName, files, { lastUserPrompt }),
-    [projectName, files, lastUserPrompt],
-  );
+  // Reactive suggestions: explicit useState + useEffect so the recompute is
+  // observable in DevTools and the dependency on real project state is loud.
+  // (A useMemo would be equivalent here, but the user wants the canonical
+  // React data-flow pattern: state changes → effect → setState → re-render.)
+  const [kind, setKind] = useState<string>('unknown');
+  const [actions, setActions] = useState<QuickAction[]>([]);
+
+  useEffect(() => {
+    const result = getQuickActions(projectName, files, { lastUserPrompt });
+    setKind(result.kind);
+    setActions(result.actions);
+  }, [projectName, files, lastUserPrompt]);
 
   // Diagnostic log — helps verify the suggestions actually reactively change.
   // Throttled to one console line per recompute (no spam during streaming
