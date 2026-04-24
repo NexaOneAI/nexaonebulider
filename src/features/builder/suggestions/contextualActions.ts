@@ -12,6 +12,28 @@ export type AppKind =
   | 'admin'
   | 'mobile';
 
+/**
+ * Progress level inside a given vertical. Each kind has its own ladder, but
+ * we normalize to 5 buckets so the UI can render a consistent badge:
+ *   empty → scaffold → core → flow → polish
+ *
+ * Examples (POS):
+ *   empty    → no products
+ *   scaffold → products list
+ *   core     → cart added
+ *   flow     → sales/checkout
+ *   polish   → reports / inventory
+ */
+export type ProjectLevel = 'empty' | 'scaffold' | 'core' | 'flow' | 'polish';
+
+export const LEVEL_LABELS: Record<ProjectLevel, string> = {
+  empty: 'Vacío',
+  scaffold: 'Andamiaje',
+  core: 'Núcleo',
+  flow: 'Flujo completo',
+  polish: 'Pulido',
+};
+
 export interface QuickAction {
   id: string;
   label: string;
@@ -77,6 +99,26 @@ export interface ProjectSignals {
   hasCharts: boolean;
   hasInventory: boolean;
   hasPayments: boolean;
+  // POS-specific progress signals
+  hasProducts: boolean;
+  hasCheckout: boolean;
+  hasSales: boolean;
+  hasReports: boolean;
+  // Landing progress signals
+  hasHero: boolean;
+  hasPricing: boolean;
+  hasTestimonials: boolean;
+  hasCta: boolean;
+  // SaaS progress signals
+  hasDashboard: boolean;
+  hasWorkspaces: boolean;
+  hasBilling: boolean;
+  // Marketplace progress signals
+  hasListings: boolean;
+  hasProductDetail: boolean;
+  // Dashboard progress signals
+  hasKpiCards: boolean;
+  hasDataTable: boolean;
 }
 
 /** Cheap content-based capability detector. Runs on every render — no cache. */
@@ -103,6 +145,21 @@ export function detectProjectSignals(files: GeneratedFile[]): ProjectSignals {
     hasCharts: has('recharts', 'chart.js', '<linechart', '<barchart', 'd3-'),
     hasInventory: has('inventory', 'inventario', 'stock'),
     hasPayments: has('stripe', 'mercadopago', 'paddle', 'create-payment'),
+    hasProducts: has('product', 'producto', 'catalog', 'catálogo', 'catalogo', 'menu', 'menú'),
+    hasCheckout: has('checkout', 'cobrar', 'pagar', 'payment', 'tpv'),
+    hasSales: has('sale', 'venta', 'order', 'pedido', 'ticket', 'invoice'),
+    hasReports: has('report', 'reporte', 'analytics', 'estadística', 'estadistica', 'summary'),
+    hasHero: has('hero', '<section', 'landing', 'banner'),
+    hasPricing: has('pricing', 'precios', 'plan', 'tarifas'),
+    hasTestimonials: has('testimonial', 'testimonio', 'reviews', 'reseña', 'resena'),
+    hasCta: has('cta', 'call-to-action', 'newsletter', 'subscribe', 'suscrib'),
+    hasDashboard: has('/dashboard', 'dashboard.tsx', 'dashboard.jsx'),
+    hasWorkspaces: has('workspace', 'tenant', 'organization', 'organización', 'organizacion'),
+    hasBilling: has('billing', 'subscription', 'suscripción', 'suscripcion', 'plan_'),
+    hasListings: has('listing', 'product-card', 'productcard', 'grid'),
+    hasProductDetail: has('product/[', 'product-detail', '/product/', 'productdetail'),
+    hasKpiCards: has('kpi', 'metric-card', 'metriccard', 'stat-card', 'statcard'),
+    hasDataTable: has('<table', 'datatable', 'data-table', 'tanstack/table'),
   };
 }
 
@@ -474,6 +531,338 @@ const KIND_ACTIONS: Record<AppKind, QuickAction[]> = {
   ],
 };
 
+/**
+ * Calcula el nivel de progreso del proyecto combinando el tipo (vertical) con
+ * las señales detectadas en los archivos. Se evalúa en cascada: si ya tiene
+ * lo de "polish" devuelve 'polish'; si solo tiene lo básico, 'scaffold'; etc.
+ * Para proyectos sin archivos (o muy pocos), siempre devuelve 'empty'.
+ */
+export function obtenerNivelProyecto(input: {
+  kind: AppKind;
+  signals: ProjectSignals;
+}): ProjectLevel {
+  const { kind, signals } = input;
+  if (signals.fileCount === 0) return 'empty';
+
+  switch (kind) {
+    case 'pos': {
+      // catálogo → carrito → ventas → reportes
+      if (signals.hasReports && signals.hasSales) return 'polish';
+      if (signals.hasSales || signals.hasCheckout) return 'flow';
+      if (signals.hasCart) return 'core';
+      if (signals.hasProducts) return 'scaffold';
+      return 'empty';
+    }
+    case 'landing': {
+      // hero → cta → pricing → testimonios
+      if (signals.hasTestimonials && signals.hasPricing) return 'polish';
+      if (signals.hasPricing) return 'flow';
+      if (signals.hasCta) return 'core';
+      if (signals.hasHero) return 'scaffold';
+      return 'empty';
+    }
+    case 'saas': {
+      // auth → dashboard → workspaces → billing
+      if (signals.hasBilling) return 'polish';
+      if (signals.hasWorkspaces) return 'flow';
+      if (signals.hasDashboard) return 'core';
+      if (signals.hasAuth) return 'scaffold';
+      return 'empty';
+    }
+    case 'marketplace': {
+      // listings → detalle → carrito → pagos
+      if (signals.hasPayments) return 'polish';
+      if (signals.hasCart) return 'flow';
+      if (signals.hasProductDetail) return 'core';
+      if (signals.hasListings || signals.hasProducts) return 'scaffold';
+      return 'empty';
+    }
+    case 'dashboard': {
+      // KPIs → charts → tabla → reports
+      if (signals.hasReports && signals.hasDataTable) return 'polish';
+      if (signals.hasDataTable) return 'flow';
+      if (signals.hasCharts) return 'core';
+      if (signals.hasKpiCards) return 'scaffold';
+      return 'empty';
+    }
+    case 'crm': {
+      if (signals.hasReports) return 'polish';
+      if (signals.hasDashboard) return 'flow';
+      if (signals.hasDataTable) return 'core';
+      if (signals.hasAuth) return 'scaffold';
+      return 'empty';
+    }
+    case 'admin': {
+      if (signals.hasReports) return 'polish';
+      if (signals.hasAdminPanel && signals.hasAuth) return 'flow';
+      if (signals.hasAdminPanel) return 'core';
+      if (signals.hasAuth) return 'scaffold';
+      return 'empty';
+    }
+    case 'mobile': {
+      if (signals.hasPwa && signals.hasAuth) return 'flow';
+      if (signals.hasPwa) return 'core';
+      if (signals.fileCount >= 3) return 'scaffold';
+      return 'empty';
+    }
+    case 'notes': {
+      if (signals.hasAuth && signals.hasSupabase) return 'flow';
+      if (signals.hasSupabase) return 'core';
+      if (signals.fileCount >= 3) return 'scaffold';
+      return 'empty';
+    }
+    default: {
+      if (signals.fileCount >= 8) return 'core';
+      if (signals.fileCount >= 3) return 'scaffold';
+      return 'empty';
+    }
+  }
+}
+
+/**
+ * Sugerencias específicas por (tipo × nivel). Estas se inyectan al INICIO de
+ * la lista de acciones para que la "siguiente acción lógica" siempre aparezca
+ * primero. Cada acción aquí está pensada para empujar al proyecto al siguiente
+ * nivel del ladder de su vertical.
+ */
+const LEVEL_ACTIONS: Partial<Record<AppKind, Partial<Record<ProjectLevel, QuickAction[]>>>> = {
+  pos: {
+    empty: [
+      {
+        id: 'pos-catalog',
+        label: 'Crear catálogo de productos',
+        tone: 'primary',
+        icon: 'package',
+        prompt: 'Crea un catálogo de productos para el POS: tabla products en Supabase con (id, name, price, stock, image_url, category), grid de tarjetas con imagen y precio, y botón para agregar producto. Incluye 6 productos demo.',
+      },
+    ],
+    scaffold: [
+      {
+        id: 'pos-cart',
+        label: 'Agregar carrito',
+        tone: 'primary',
+        icon: 'shopping-cart',
+        prompt: 'Agrega un carrito lateral al POS: clic en producto lo añade, cantidades editables (+/-), botón eliminar, total dinámico en pesos y botón grande "Cobrar" destacado.',
+      },
+    ],
+    core: [
+      {
+        id: 'pos-sales',
+        label: 'Flujo de ventas',
+        tone: 'primary',
+        icon: 'credit-card',
+        prompt: 'Implementa el flujo de cobro: modal con métodos de pago (efectivo, tarjeta), captura el monto recibido, calcula cambio, persiste la venta en tabla sales con items en sales_items, y descuenta stock. Muestra ticket al final.',
+      },
+    ],
+    flow: [
+      {
+        id: 'pos-reports',
+        label: 'Reportes de ventas',
+        tone: 'accent',
+        icon: 'chart',
+        prompt: 'Agrega una pantalla de reportes: ventas del día/semana/mes, top productos vendidos con gráfico de barras (recharts), ticket promedio y total acumulado.',
+      },
+    ],
+    polish: [
+      {
+        id: 'pos-inventory-alerts',
+        label: 'Alertas de stock bajo',
+        tone: 'muted',
+        icon: 'package',
+        prompt: 'Agrega alertas de stock bajo: badge rojo en productos con stock < 5, vista lateral "Por reabastecer" y notificación toast al inicio de sesión si hay productos críticos.',
+      },
+    ],
+  },
+  landing: {
+    empty: [
+      {
+        id: 'landing-hero',
+        label: 'Crear hero principal',
+        tone: 'primary',
+        icon: 'sparkles',
+        prompt: 'Crea un hero section premium para la landing: título grande con keyword principal, subtítulo, dos botones (CTA primario + secundario), imagen o gradient atractivo y badge de social proof.',
+      },
+    ],
+    scaffold: [
+      {
+        id: 'landing-cta-block',
+        label: 'Agregar bloque CTA',
+        tone: 'primary',
+        icon: 'zap',
+        prompt: 'Añade una sección de call-to-action prominente antes del footer con título persuasivo, formulario de captura de email y botón destacado.',
+      },
+    ],
+    core: [
+      {
+        id: 'landing-pricing',
+        label: 'Tabla de precios',
+        tone: 'accent',
+        icon: 'credit-card',
+        prompt: 'Agrega sección de pricing con 3 planes (Free, Pro, Enterprise), comparativa de features con checks, plan destacado y botón de upgrade.',
+      },
+    ],
+    flow: [
+      {
+        id: 'landing-testimonials',
+        label: 'Sección testimonios',
+        tone: 'accent',
+        icon: 'users',
+        prompt: 'Añade sección de testimonios con avatares, nombre, rol/empresa y quote, en grid responsive de 3 columnas.',
+      },
+    ],
+    polish: [
+      {
+        id: 'landing-faq',
+        label: 'Agregar FAQ',
+        tone: 'muted',
+        icon: 'sparkles',
+        prompt: 'Agrega una sección de preguntas frecuentes con accordion expandible, 6 preguntas reales sobre el producto.',
+      },
+    ],
+  },
+  saas: {
+    empty: [
+      {
+        id: 'saas-auth',
+        label: 'Agregar autenticación',
+        tone: 'primary',
+        icon: 'shield',
+        prompt: 'Agrega autenticación con email+contraseña usando Supabase: pantallas de login y registro, logout, ruta protegida y tabla profiles con trigger handle_new_user.',
+      },
+    ],
+    scaffold: [
+      {
+        id: 'saas-dashboard-shell',
+        label: 'Dashboard de cuenta',
+        tone: 'primary',
+        icon: 'layout-dashboard',
+        prompt: 'Crea el dashboard principal del SaaS: sidebar con navegación, header con avatar y logout, y una vista de overview con métricas de uso y quick actions.',
+      },
+    ],
+    core: [
+      {
+        id: 'saas-workspaces',
+        label: 'Multi-workspace',
+        tone: 'accent',
+        icon: 'users',
+        prompt: 'Agrega soporte multi-workspace: cada usuario puede crear y unirse a workspaces, selector de workspace activo en el header, datos aislados por RLS usando workspace_id.',
+      },
+    ],
+    flow: [
+      {
+        id: 'saas-billing',
+        label: 'Planes y billing',
+        tone: 'accent',
+        icon: 'credit-card',
+        prompt: 'Agrega pantalla de billing: plan actual, comparativa de planes, botón de upgrade y tabla de facturas pasadas.',
+      },
+    ],
+    polish: [
+      {
+        id: 'saas-team',
+        label: 'Invitar miembros',
+        tone: 'muted',
+        icon: 'users',
+        prompt: 'Agrega gestión de miembros del workspace: invitar por email, asignar rol (owner/admin/member), revocar acceso y vista de actividad reciente.',
+      },
+    ],
+  },
+  marketplace: {
+    empty: [
+      {
+        id: 'mkt-listings',
+        label: 'Crear listings',
+        tone: 'primary',
+        icon: 'package',
+        prompt: 'Crea el listado principal del marketplace: grid de productos con imagen, título, precio y rating; tabla products en Supabase con seller_id; sembrar 8 productos demo.',
+      },
+    ],
+    scaffold: [
+      {
+        id: 'mkt-detail',
+        label: 'Página de producto',
+        tone: 'primary',
+        icon: 'package',
+        prompt: 'Crea la página de detalle de producto en /product/:id con galería de imágenes, descripción, precio, stock, vendedor y botón "Agregar al carrito".',
+      },
+    ],
+    core: [
+      {
+        id: 'mkt-cart',
+        label: 'Carrito de compras',
+        tone: 'accent',
+        icon: 'shopping-cart',
+        prompt: 'Agrega carrito persistente: drawer lateral con items, cantidades editables, total y botón "Ir a checkout". Persiste en localStorage hasta autenticarse.',
+      },
+    ],
+    flow: [
+      {
+        id: 'mkt-payments',
+        label: 'Integrar pagos',
+        tone: 'accent',
+        icon: 'credit-card',
+        prompt: 'Agrega checkout con Stripe usando edge functions seguras: crear sesión de pago, redirigir a Stripe Checkout, webhook para confirmar la orden y crear la fila en orders.',
+      },
+    ],
+    polish: [
+      {
+        id: 'mkt-reviews',
+        label: 'Reviews y rating',
+        tone: 'muted',
+        icon: 'users',
+        prompt: 'Agrega sistema de reviews por producto: estrellas, comentario, validación de compra previa, promedio en la card del listado.',
+      },
+    ],
+  },
+  dashboard: {
+    empty: [
+      {
+        id: 'dash-kpis',
+        label: 'Tarjetas KPI',
+        tone: 'primary',
+        icon: 'layout-dashboard',
+        prompt: 'Agrega 4 tarjetas KPI en la parte superior del dashboard: icono, etiqueta, valor grande y delta vs periodo anterior con flecha verde/roja.',
+      },
+    ],
+    scaffold: [
+      {
+        id: 'dash-chart',
+        label: 'Gráfico principal',
+        tone: 'primary',
+        icon: 'chart',
+        prompt: 'Añade un gráfico de líneas con recharts mostrando la métrica clave de los últimos 30 días, con tooltip y leyenda.',
+      },
+    ],
+    core: [
+      {
+        id: 'dash-table',
+        label: 'Tabla con filtros',
+        tone: 'accent',
+        icon: 'layout-dashboard',
+        prompt: 'Agrega una tabla con búsqueda, ordenamiento por columna, filtro por estado y paginación.',
+      },
+    ],
+    flow: [
+      {
+        id: 'dash-export',
+        label: 'Exportar reportes',
+        tone: 'accent',
+        icon: 'rocket',
+        prompt: 'Agrega botón "Exportar reporte" que genera un CSV con los datos filtrados de la tabla y los descarga.',
+      },
+    ],
+    polish: [
+      {
+        id: 'dash-realtime',
+        label: 'Datos en tiempo real',
+        tone: 'muted',
+        icon: 'zap',
+        prompt: 'Habilita realtime con Supabase: las KPIs y la tabla se actualizan al instante cuando hay nuevos registros, sin recargar.',
+      },
+    ],
+  },
+};
+
 export function getQuickActions(
   projectName: string,
   files: GeneratedFile[],
@@ -482,13 +871,18 @@ export function getQuickActions(
   kind: AppKind;
   actions: QuickAction[];
   signals: ProjectSignals;
+  level: ProjectLevel;
 } {
   const kind = detectAppKind(projectName, files, ctx);
   const signals = detectProjectSignals(files);
+  const level = obtenerNivelProyecto({ kind, signals });
   const specific = KIND_ACTIONS[kind] ?? [];
+  const levelActions = LEVEL_ACTIONS[kind]?.[level] ?? [];
 
-  // 1. Combine specific (vertical) + base (always-useful).
-  const combined = [...specific, ...BASE_ACTIONS];
+  // 1. Progress-aware first (most contextual), then vertical, then base.
+  //    Level actions describe the *next logical step* given current progress
+  //    (POS without products → "crear catálogo"; POS with cart → "ventas").
+  const combined = [...levelActions, ...specific, ...BASE_ACTIONS];
 
   // 2. Filter out actions that are already satisfied by the current code.
   //    This is what makes suggestions truly *change* as the project evolves:
@@ -535,5 +929,5 @@ export function getQuickActions(
     if (actions.length >= 12) break;
   }
 
-  return { kind, actions, signals };
+  return { kind, actions, signals, level };
 }
