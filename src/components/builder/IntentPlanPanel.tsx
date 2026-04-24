@@ -21,6 +21,7 @@ import {
   Check,
   ScanSearch,
   Lock,
+  ScrollText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -46,6 +47,7 @@ import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
 import { recordIntentAudit } from '@/features/audit/intentAuditService';
 import { logEventoIA } from '@/features/audit/nexaEventLogger';
+import { NexaEventLogPanel } from '@/components/builder/NexaEventLogPanel';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
