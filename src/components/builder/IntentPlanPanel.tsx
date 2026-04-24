@@ -126,8 +126,8 @@ export function IntentPlanPanel() {
   };
 
   const riskTone = {
-    low: 'text-emerald-400 border-emerald-400/40 bg-emerald-400/10',
-    medium: 'text-amber-400 border-amber-400/40 bg-amber-400/10',
+    low: 'text-primary border-primary/40 bg-primary/10',
+    medium: 'text-accent border-accent/40 bg-accent/10',
     high: 'text-destructive border-destructive/40 bg-destructive/10',
   } as const;
 
