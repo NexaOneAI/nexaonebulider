@@ -12,6 +12,28 @@ export type AppKind =
   | 'admin'
   | 'mobile';
 
+/**
+ * Progress level inside a given vertical. Each kind has its own ladder, but
+ * we normalize to 5 buckets so the UI can render a consistent badge:
+ *   empty → scaffold → core → flow → polish
+ *
+ * Examples (POS):
+ *   empty    → no products
+ *   scaffold → products list
+ *   core     → cart added
+ *   flow     → sales/checkout
+ *   polish   → reports / inventory
+ */
+export type ProjectLevel = 'empty' | 'scaffold' | 'core' | 'flow' | 'polish';
+
+export const LEVEL_LABELS: Record<ProjectLevel, string> = {
+  empty: 'Vacío',
+  scaffold: 'Andamiaje',
+  core: 'Núcleo',
+  flow: 'Flujo completo',
+  polish: 'Pulido',
+};
+
 export interface QuickAction {
   id: string;
   label: string;
