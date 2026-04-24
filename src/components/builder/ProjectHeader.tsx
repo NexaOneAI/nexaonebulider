@@ -125,20 +125,20 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
   })();
 
   return (
-    <div className="flex h-12 items-center justify-between border-b border-border/50 bg-card/80 px-3 backdrop-blur-xl">
-      <div className="flex items-center gap-2">
+    <div className="flex h-12 items-center gap-2 border-b border-border/50 bg-card/80 px-2 backdrop-blur-xl sm:px-3">
+      <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => navigate('/dashboard')}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className={`h-8 w-8 ${sidebarOpen ? 'text-primary' : ''}`} onClick={toggleSidebar}>
+        <Button variant="ghost" size="icon" className={`hidden h-8 w-8 sm:inline-flex ${sidebarOpen ? 'text-primary' : ''}`} onClick={toggleSidebar}>
           <PanelLeft className="h-4 w-4" />
         </Button>
-        <div className="mx-2 h-5 w-px bg-border" />
+        <div className="mx-1 hidden h-5 w-px bg-border sm:block sm:mx-2" />
         <Input value={projectName} onChange={(e) => setProjectName(e.target.value)}
-          className="h-8 w-48 border-none bg-transparent px-2 text-sm font-medium focus-visible:ring-1" />
+          className="h-8 w-28 border-none bg-transparent px-2 text-sm font-medium focus-visible:ring-1 sm:w-48" />
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="hidden items-center gap-1 md:flex">
         {([
           ['desktop', Monitor],
           ['tablet', Tablet],
@@ -152,16 +152,18 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         ))}
       </div>
 
-      <div className="flex items-center gap-2">
-        <ModelSelector value={model} onChange={setModel} />
-        <div className="flex items-center gap-1 rounded-md bg-secondary px-2 py-1">
+      <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1 overflow-x-auto sm:gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="hidden lg:block">
+          <ModelSelector value={model} onChange={setModel} />
+        </div>
+        <div className="hidden shrink-0 items-center gap-1 rounded-md bg-secondary px-2 py-1 sm:flex">
           <Zap className="h-3 w-3 text-primary" />
           <span className="text-xs font-medium">{displayCredits}</span>
         </div>
         <Button
           variant="ghost"
           size="icon"
-          className="relative h-8 w-8"
+          className="relative h-8 w-8 shrink-0"
           onClick={handleSave}
           disabled={saveStatus === 'saving'}
           title={saveTooltip}
@@ -183,19 +185,19 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className={`h-8 w-8 ${historyOpen ? 'text-primary' : ''}`}
+          className={`h-8 w-8 shrink-0 ${historyOpen ? 'text-primary' : ''}`}
           onClick={onToggleHistory}
           title="Historial de versiones"
         >
           <History className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExport} title="Exportar ZIP">
+        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={handleExport} title="Descargar proyecto (ZIP)">
           <Download className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="hidden h-8 w-8 shrink-0 sm:inline-flex"
           onClick={() => {
             if (!projectId) { toast.info('Abre un proyecto primero'); return; }
             setAssetsOpen(true);
@@ -207,7 +209,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="hidden h-8 w-8 shrink-0 sm:inline-flex"
           onClick={() => {
             if (!projectId) { toast.info('Guarda el proyecto primero'); return; }
             if (files.length === 0) { toast.info('Genera una app primero'); return; }
@@ -220,7 +222,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className={`relative h-8 w-8 ${sandbox !== 'iframe' ? 'text-primary' : ''}`}
+          className={`relative hidden h-8 w-8 shrink-0 sm:inline-flex ${sandbox !== 'iframe' ? 'text-primary' : ''}`}
           onClick={toggleSandbox}
           title={
             sandbox === 'webcontainer'
@@ -246,7 +248,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="hidden h-8 w-8 shrink-0 lg:inline-flex"
           onClick={() => {
             if (!projectId) { toast.info('Abre un proyecto primero'); return; }
             setKnowledgeOpen(true);
@@ -258,7 +260,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className={`relative h-8 w-8 ${githubStatus?.repo ? 'text-primary' : ''}`}
+          className={`relative hidden h-8 w-8 shrink-0 lg:inline-flex ${githubStatus?.repo ? 'text-primary' : ''}`}
           onClick={() => {
             if (!projectId) { toast.info('Abre un proyecto primero'); return; }
             setGithubOpen(true);
@@ -277,7 +279,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         <Button
           variant="ghost"
           size="icon"
-          className="h-8 w-8"
+          className="h-8 w-8 shrink-0"
           onClick={() => {
             if (!projectId) { toast.info('Abre un proyecto primero'); return; }
             if (files.length === 0) { toast.info('Genera una app primero'); return; }
@@ -287,7 +289,7 @@ export function ProjectHeader({ onToggleHistory, historyOpen }: Props = {}) {
         >
           <Rocket className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className={`h-8 w-8 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}>
+        <Button variant="ghost" size="icon" className={`h-8 w-8 shrink-0 ${chatOpen ? 'text-primary' : ''}`} onClick={toggleChat}>
           <MessageSquare className="h-4 w-4" />
         </Button>
       </div>

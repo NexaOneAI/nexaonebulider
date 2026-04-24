@@ -200,28 +200,28 @@ export default function Dashboard() {
 
   return (
     <AppShell>
-      <div className="container py-8">
-        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-8">
-          <h1 className="text-3xl font-bold">Hola, {fullName} 👋</h1>
-          <p className="mt-1 text-muted-foreground">Gestiona tus proyectos y créditos</p>
+      <div className="container py-4 sm:py-8">
+        <motion.div initial="hidden" animate="visible" variants={fadeUp} className="mb-6 sm:mb-8">
+          <h1 className="text-2xl font-bold sm:text-3xl">Hola, {fullName} 👋</h1>
+          <p className="mt-1 text-sm text-muted-foreground sm:text-base">Gestiona tus proyectos y créditos</p>
         </motion.div>
 
         {/* Stats */}
-        <div className="mb-8 grid gap-4 md:grid-cols-3">
+        <div className="mb-6 grid grid-cols-3 gap-2 sm:gap-4 md:mb-8">
           {[
             { icon: Zap, label: 'Créditos', value: credits, color: 'text-primary' },
             { icon: Folder, label: 'Proyectos', value: projects.length, color: 'text-accent' },
             { icon: Clock, label: 'Plan', value: plan, color: 'text-success' },
           ].map((stat, i) => (
             <motion.div key={i} initial="hidden" animate="visible" variants={fadeUp} transition={{ delay: i * 0.1 }}
-              className="rounded-xl border border-border/50 bg-card p-5 shadow-card">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+              className="rounded-xl border border-border/50 bg-card p-3 shadow-card sm:p-5">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-secondary sm:h-10 sm:w-10">
+                  <stat.icon className={`h-4 w-4 sm:h-5 sm:w-5 ${stat.color}`} />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className="text-xl font-bold">{stat.value}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-muted-foreground sm:text-sm">{stat.label}</p>
+                  <p className="truncate text-base font-bold sm:text-xl">{stat.value}</p>
                 </div>
               </div>
             </motion.div>
