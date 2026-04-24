@@ -23,6 +23,8 @@ import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction
 import { versionsService } from '@/features/projects/versionsService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNexaMemory } from '@/hooks/useNexaMemory';
+import { Brain, History } from 'lucide-react';
 
 /**
  * Banco de pruebas visible del motor de intención. Vive como tarjeta dentro
@@ -49,6 +51,15 @@ export function IntentTesterPanel() {
   const [analyzing, setAnalyzing] = useState(false);
   const [reverting, setReverting] = useState(false);
 
+  const {
+    memory,
+    acceptedIds,
+    registerAccepted,
+    registerModule,
+    registerRevert,
+    syncContext,
+  } = useNexaMemory(projectId);
+
   const busy = loading || streaming;
 
   const lastUserPrompt = (() => {
@@ -67,8 +78,9 @@ export function IntentTesterPanel() {
     }
     setAnalyzing(true);
     try {
-      const result = analyzeProject({ projectName, files, lastUserPrompt });
+      const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
       setSnap(result);
+      syncContext({ kind: result.kind, level: result.level }).catch(() => {});
       if (!result.primary) {
         toast.info('El proyecto está vacío — genera o abre archivos primero');
       } else {
@@ -104,6 +116,13 @@ export function IntentTesterPanel() {
     toast.success(`Aplicando: ${plan.intent}`);
     try {
       await sendPrompt(plan.prompt);
+      await registerAccepted({ id: plan.action.id, label: plan.intent });
+      await registerModule({
+        id: plan.module,
+        label: plan.intent,
+        credits: plan.estimatedCredits,
+        actionId: plan.action.id,
+      });
       // Re-analizar tras aplicar para ver el nuevo nivel/sugerencia.
       setTimeout(() => handleAnalyze(), 500);
     } catch (e) {
@@ -124,6 +143,7 @@ export function IntentTesterPanel() {
       const target = versions[1];
       await loadVersion(target.id);
       toast.success(`Revertido a v${target.version_number}`);
+      await registerRevert(`Revertido a v${target.version_number}`);
       setSnap(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al revertir');
@@ -272,6 +292,84 @@ export function IntentTesterPanel() {
       {snap && !snap.primary && (
         <div className="mt-3 rounded-md border border-border/60 bg-background/60 p-3 text-[12px] text-muted-foreground">
           El proyecto está vacío. Genera código primero o abre un proyecto existente.
+        </div>
+      )}
+
+      {(memory.installedModules.length > 0 ||
+        memory.acceptedSuggestions.length > 0 ||
+        memory.history.length > 0) && (
+        <div
+          data-testid="nexa-memory"
+          className="mt-3 rounded-md border border-primary/30 bg-background/60 p-3"
+        >
+          <div className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+            <Brain className="h-3 w-3" />
+            Memoria del proyecto · Nexa Intelligence
+            {memory.projectKind && (
+              <span className="ml-auto rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary">
+                {memory.projectKind} · {memory.projectLevel ?? '—'}
+              </span>
+            )}
+          </div>
+
+          {memory.installedModules.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                Módulos instalados ({memory.installedModules.length})
+              </div>
+              <div className="flex flex-wrap gap-1" data-testid="memory-modules">
+                {memory.installedModules.map((m) => (
+                  <span
+                    key={m.id}
+                    title={`${m.label} · ${new Date(m.installedAt).toLocaleString()}`}
+                    className="rounded border border-primary/40 bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary"
+                  >
+                    {m.id}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {memory.acceptedSuggestions.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                Sugerencias aceptadas (no se repetirán)
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {memory.acceptedSuggestions.slice(-8).map((s) => (
+                  <span
+                    key={s.id}
+                    className="rounded border border-accent/40 bg-accent/10 px-1.5 py-0.5 text-[10px] text-accent"
+                  >
+                    {s.id}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {memory.history.length > 0 && (
+            <div>
+              <div className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
+                <History className="h-3 w-3" />
+                Últimas acciones
+              </div>
+              <ul className="space-y-0.5 text-[10px] text-muted-foreground">
+                {memory.history
+                  .slice(-5)
+                  .reverse()
+                  .map((h, i) => (
+                    <li key={`${h.at}-${i}`} className="truncate">
+                      <span className="font-mono text-foreground/70">
+                        {new Date(h.at).toLocaleTimeString()}
+                      </span>{' '}
+                      · <span className="font-semibold">{h.kind}</span> — {h.label}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
     </div>

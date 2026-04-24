@@ -24,6 +24,7 @@ import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction
 import { versionsService } from '@/features/projects/versionsService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNexaMemory } from '@/hooks/useNexaMemory';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
@@ -55,6 +56,15 @@ export function IntentPlanPanel() {
   const [expanded, setExpanded] = useState(true);
   const [reverting, setReverting] = useState(false);
 
+  // Memoria persistente del proyecto (Nexa Intelligence).
+  const {
+    acceptedIds,
+    registerAccepted,
+    registerModule,
+    registerRevert,
+    syncContext,
+  } = useNexaMemory(projectId);
+
   const lastUserPrompt = useMemo(() => {
     const safe = Array.isArray(messages) ? messages : [];
     for (let i = safe.length - 1; i >= 0; i -= 1) {
@@ -67,8 +77,11 @@ export function IntentPlanPanel() {
   // Snapshot reactivo — recalcula cuando cambia el proyecto.
   const [snap, setSnap] = useState<IntentSnapshot | null>(null);
   useEffect(() => {
-    setSnap(analyzeProject({ projectName, files, lastUserPrompt }));
-  }, [projectName, files, lastUserPrompt]);
+    const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
+    setSnap(result);
+    // Persistimos kind/level más recientes para que la memoria refleje el contexto.
+    syncContext({ kind: result.kind, level: result.level }).catch(() => {});
+  }, [projectName, files, lastUserPrompt, acceptedIds, syncContext]);
 
   if (!snap || files.length === 0 || !snap.primary) return null;
 
@@ -94,6 +107,14 @@ export function IntentPlanPanel() {
     toast.success(`Implementando: ${p.intent}`);
     try {
       await sendPrompt(p.prompt);
+      // Enriquecemos memoria: la sugerencia se aceptó y el módulo quedó instalado.
+      await registerAccepted({ id: p.action.id, label: p.intent });
+      await registerModule({
+        id: p.module,
+        label: p.intent,
+        credits: p.estimatedCredits,
+        actionId: p.action.id,
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al implementar');
     }
@@ -118,6 +139,7 @@ export function IntentPlanPanel() {
       const target = versions[1];
       await loadVersion(target.id);
       toast.success(`Revertido a v${target.version_number}`);
+      await registerRevert(`Revertido a v${target.version_number}`);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al revertir');
     } finally {
