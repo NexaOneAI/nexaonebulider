@@ -94,6 +94,21 @@ export function IntentPlanPanel() {
   const busy = loading || streaming;
   const plan = snap.primary;
 
+  // Preview diff ANTES vs DESPUÉS — clasifica cada archivo afectado.
+  const existingPaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
+  const diffEntries = useMemo(() => {
+    return plan.filesAffected.map((path) => {
+      const isPlaceholder = path.includes('<new>');
+      const exists = !isPlaceholder && existingPaths.has(path);
+      return {
+        path,
+        kind: exists ? ('modified' as const) : ('created' as const),
+      };
+    });
+  }, [plan.filesAffected, existingPaths]);
+  const createdCount = diffEntries.filter((d) => d.kind === 'created').length;
+  const modifiedCount = diffEntries.filter((d) => d.kind === 'modified').length;
+
   const handleConfirm = async (p: IntentPlan) => {
     if (busy) {
       toast.info('La IA está ocupada, espera a que termine');
