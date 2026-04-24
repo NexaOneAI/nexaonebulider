@@ -458,20 +458,40 @@ export function IntentPlanPanel() {
             </div>
           )}
 
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button
+              size="sm"
+              variant={reviewedPlanIds.has(plan.action.id) ? 'outline' : 'default'}
+              onClick={() => setImpactOpen(true)}
+              className="h-8 gap-1.5"
+              data-testid="intent-view-impact"
+            >
+              <ScanSearch className="h-3.5 w-3.5" />
+              Ver impacto
+              {reviewedPlanIds.has(plan.action.id) && (
+                <Check className="h-3 w-3 text-primary" />
+              )}
+            </Button>
             <Button
               size="sm"
               onClick={() => handleConfirm(plan)}
-              disabled={busy}
-              className="h-8 gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+              disabled={busy || (!plan.action.uiAction && !reviewedPlanIds.has(plan.action.id))}
+              className="h-8 gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 disabled:from-muted disabled:to-muted disabled:text-muted-foreground"
               data-testid="intent-confirm"
+              title={
+                !plan.action.uiAction && !reviewedPlanIds.has(plan.action.id)
+                  ? 'Revisa el impacto antes de aplicar'
+                  : 'Aplicar el módulo recomendado'
+              }
             >
               {busy ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : !plan.action.uiAction && !reviewedPlanIds.has(plan.action.id) ? (
+                <Lock className="h-3.5 w-3.5" />
               ) : (
                 <Sparkles className="h-3.5 w-3.5" />
               )}
-              Confirmar e implementar
+              Aplicar
             </Button>
             <Button
               size="sm"
@@ -511,6 +531,131 @@ export function IntentPlanPanel() {
           </div>
         </div>
       )}
+
+      {/* Modal de impacto — claridad + control antes de aplicar */}
+      <Dialog open={impactOpen} onOpenChange={setImpactOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanSearch className="h-5 w-5 text-primary" />
+              Impacto del cambio
+            </DialogTitle>
+            <DialogDescription>
+              Revisa qué tocará la IA antes de ejecutar el módulo{' '}
+              <span className="font-mono text-foreground">{plan.module}</span>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3">
+            {/* Resumen claro */}
+            <div className="rounded-md border border-border bg-card/60 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Resumen
+              </div>
+              <p className="mt-1 text-sm font-semibold text-foreground">{plan.intent}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{plan.expectedOutcome}</p>
+            </div>
+
+            {/* Métricas */}
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
+              <div className={cn('rounded border p-2 text-center font-semibold', riskTone[plan.risk])}>
+                <ShieldAlert className="mx-auto mb-1 h-3.5 w-3.5" />
+                Riesgo: {RISK_LABELS[plan.risk]}
+              </div>
+              <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
+                <Coins className="mx-auto mb-1 h-3.5 w-3.5" />
+                {plan.estimatedCredits === 0 ? 'Gratis' : `~${plan.estimatedCredits} créditos`}
+              </div>
+              <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
+                <FileEdit className="mx-auto mb-1 h-3.5 w-3.5" />
+                {createdCount + modifiedCount} archivo
+                {createdCount + modifiedCount !== 1 ? 's' : ''}
+              </div>
+            </div>
+
+            {/* Cambios conceptuales */}
+            {planJson.cambios.length > 0 && (
+              <div className="rounded-md border border-border bg-card/60 p-3">
+                <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Cambios que se aplicarán
+                </div>
+                <ul className="mt-1.5 space-y-1 text-xs text-foreground">
+                  {planJson.cambios.map((c) => (
+                    <li key={c} className="flex items-start gap-1.5">
+                      <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
+                      <span>{c}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Diff conceptual de archivos */}
+            <div className="rounded-md border border-border bg-card/60 p-3">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Archivos que se tocarán ({createdCount} nuevos · {modifiedCount} modificados)
+              </div>
+              <ul className="mt-1.5 max-h-48 space-y-1 overflow-auto font-mono text-[11px]">
+                {diffEntries.map((d) => (
+                  <li
+                    key={`impact-${d.path}`}
+                    className={cn(
+                      'flex items-center gap-2 rounded px-2 py-1',
+                      d.kind === 'created'
+                        ? 'bg-primary/10 text-primary'
+                        : 'bg-accent/10 text-accent',
+                    )}
+                  >
+                    {d.kind === 'created' ? (
+                      <FilePlus2 className="h-3 w-3 shrink-0" />
+                    ) : (
+                      <FileCog className="h-3 w-3 shrink-0" />
+                    )}
+                    <code className="flex-1 truncate text-foreground">{d.path}</code>
+                    <span className="text-[9px] uppercase tracking-wider opacity-80">
+                      {d.kind === 'created' ? 'nuevo' : 'editado'}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] italic text-muted-foreground">
+                Estimación heurística — la IA puede tocar archivos adicionales si lo necesita.
+              </p>
+            </div>
+
+            {/* Advertencia de riesgo alto */}
+            {plan.risk === 'high' && (
+              <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/5 p-3 text-xs text-destructive">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">Cambio de alto riesgo</p>
+                  <p className="mt-0.5 text-destructive/90">
+                    Toca estructura crítica (auth, base de datos o admin). Si algo se rompe,
+                    usa <strong>Revertir último cambio</strong> para volver a la versión anterior.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setImpactOpen(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                setReviewedPlanIds((s) => new Set(s).add(plan.action.id));
+                setImpactOpen(false);
+                toast.success('Impacto revisado — ya puedes aplicar');
+              }}
+              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90"
+            >
+              <Check className="h-4 w-4" />
+              Entendido, desbloquear "Aplicar"
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
