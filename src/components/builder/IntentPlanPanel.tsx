@@ -11,6 +11,11 @@ import {
   ChevronUp,
   Wand2,
   AlertTriangle,
+  GitCompare,
+  FilePlus2,
+  FileCog,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useBuilderStore } from '@/features/builder/builderStore';
@@ -55,6 +60,7 @@ export function IntentPlanPanel() {
 
   const [expanded, setExpanded] = useState(true);
   const [reverting, setReverting] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
 
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
@@ -83,10 +89,27 @@ export function IntentPlanPanel() {
     syncContext({ kind: result.kind, level: result.level }).catch(() => {});
   }, [projectName, files, lastUserPrompt, acceptedIds, syncContext]);
 
+  // Preview diff ANTES vs DESPUÉS — clasifica cada archivo afectado.
+  // (Hooks SIEMPRE antes de cualquier early return.)
+  const existingPaths = useMemo(() => new Set(files.map((f) => f.path)), [files]);
+  const planFiles = snap?.primary?.filesAffected ?? [];
+  const diffEntries = useMemo(() => {
+    return planFiles.map((path) => {
+      const isPlaceholder = path.includes('<new>');
+      const exists = !isPlaceholder && existingPaths.has(path);
+      return {
+        path,
+        kind: exists ? ('modified' as const) : ('created' as const),
+      };
+    });
+  }, [planFiles, existingPaths]);
+
   if (!snap || files.length === 0 || !snap.primary) return null;
 
   const busy = loading || streaming;
   const plan = snap.primary;
+  const createdCount = diffEntries.filter((d) => d.kind === 'created').length;
+  const modifiedCount = diffEntries.filter((d) => d.kind === 'modified').length;
 
   const handleConfirm = async (p: IntentPlan) => {
     if (busy) {
@@ -215,19 +238,116 @@ export function IntentPlanPanel() {
             </span>
           </div>
 
-          {plan.filesAffected.length > 0 && (
-            <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
-              <FileEdit className="mt-0.5 h-3 w-3 shrink-0" />
-              <div className="flex flex-wrap gap-1">
-                {plan.filesAffected.map((f) => (
-                  <code
-                    key={f}
-                    className="rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[10px] text-foreground"
-                  >
-                    {f}
-                  </code>
-                ))}
-              </div>
+          {diffEntries.length > 0 && (
+            <div className="rounded-md border border-border/60 bg-card/60">
+              <button
+                type="button"
+                onClick={() => setShowDiff((s) => !s)}
+                className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-[11px] hover:bg-muted/40"
+                aria-expanded={showDiff}
+              >
+                <GitCompare className="h-3 w-3 text-primary" />
+                <span className="font-semibold text-foreground">
+                  Vista previa de cambios
+                </span>
+                <span className="flex items-center gap-1.5 text-muted-foreground">
+                  {createdCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] text-primary">
+                      +{createdCount} nuevo{createdCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {modifiedCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] text-accent">
+                      ~{modifiedCount} modificado{modifiedCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </span>
+                <span className="ml-auto inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+                  {showDiff ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {showDiff ? 'Ocultar' : 'Ver diff'}
+                </span>
+              </button>
+              {showDiff && (
+                <div className="grid gap-2 border-t border-border/60 p-2 sm:grid-cols-2">
+                  {/* ANTES */}
+                  <div className="rounded border border-border/60 bg-muted/30 p-2">
+                    <div className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      <span className="rounded bg-muted px-1.5 py-0.5 text-foreground">ANTES</span>
+                      <span>estado actual</span>
+                    </div>
+                    <ul className="space-y-1 font-mono text-[10px]">
+                      {diffEntries.map((d) => (
+                        <li
+                          key={`before-${d.path}`}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded px-1.5 py-0.5',
+                            d.kind === 'created'
+                              ? 'bg-destructive/10 text-muted-foreground line-through'
+                              : 'bg-muted/40 text-foreground',
+                          )}
+                        >
+                          <span className="w-3 text-center">
+                            {d.kind === 'created' ? '−' : '·'}
+                          </span>
+                          <code className="truncate">
+                            {d.kind === 'created' ? '(no existe)' : d.path}
+                          </code>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {/* DESPUÉS */}
+                  <div className="rounded border border-primary/40 bg-primary/5 p-2">
+                    <div className="mb-1.5 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-primary">
+                      <span className="rounded bg-primary/20 px-1.5 py-0.5">DESPUÉS</span>
+                      <span className="text-muted-foreground">tras aplicar el módulo</span>
+                    </div>
+                    <ul className="space-y-1 font-mono text-[10px]">
+                      {diffEntries.map((d) => (
+                        <li
+                          key={`after-${d.path}`}
+                          className={cn(
+                            'flex items-center gap-1.5 rounded px-1.5 py-0.5',
+                            d.kind === 'created'
+                              ? 'bg-primary/15 text-primary'
+                              : 'bg-accent/15 text-accent',
+                          )}
+                        >
+                          {d.kind === 'created' ? (
+                            <FilePlus2 className="h-3 w-3 shrink-0" />
+                          ) : (
+                            <FileCog className="h-3 w-3 shrink-0" />
+                          )}
+                          <code className="truncate text-foreground">{d.path}</code>
+                          <span className="ml-auto text-[9px] uppercase tracking-wider opacity-80">
+                            {d.kind === 'created' ? 'nuevo' : 'editado'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+              {!showDiff && (
+                <div className="flex flex-wrap items-start gap-1 px-2 pb-2 text-[11px] text-muted-foreground">
+                  <FileEdit className="mt-0.5 h-3 w-3 shrink-0" />
+                  {diffEntries.map((d) => (
+                    <code
+                      key={d.path}
+                      className={cn(
+                        'rounded px-1.5 py-0.5 font-mono text-[10px]',
+                        d.kind === 'created'
+                          ? 'bg-primary/15 text-primary'
+                          : 'bg-accent/15 text-accent',
+                      )}
+                      title={d.kind === 'created' ? 'Se creará' : 'Se modificará'}
+                    >
+                      {d.kind === 'created' ? '+ ' : '~ '}
+                      {d.path}
+                    </code>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
