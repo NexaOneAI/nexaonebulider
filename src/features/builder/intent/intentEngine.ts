@@ -320,3 +320,63 @@ export const RISK_LABELS: Record<IntentRisk, string> = {
   medium: 'Medio',
   high: 'Alto',
 };
+
+/**
+ * Contrato JSON estándar Nexa One.
+ * Mismo shape para UI, logs y edge functions — un solo formato canónico.
+ */
+export interface IntentPlanJson {
+  accion: string;
+  modulo: string;
+  archivos: string[];
+  cambios: string[];
+  riesgo: 'bajo' | 'medio' | 'alto';
+  creditos_estimados: number;
+  resultado_esperado: string;
+}
+
+const RISK_ES: Record<IntentRisk, IntentPlanJson['riesgo']> = {
+  low: 'bajo',
+  medium: 'medio',
+  high: 'alto',
+};
+
+/** Cambios de alto nivel inferidos por módulo (frases cortas en español). */
+const MODULE_CHANGES: Record<string, string[]> = {
+  cart: ['crear componente carrito', 'agregar estado global', 'botón agregar producto'],
+  catalog: ['crear pantalla de catálogo', 'añadir productos demo', 'tarjeta ProductCard reusable'],
+  sales: ['crear flujo de cobro', 'persistir ventas', 'generar ticket'],
+  reports: ['agregar reportes de ventas', 'gráfico de barras', 'totales por periodo'],
+  inventory: ['control de stock', 'alertas de bajo inventario'],
+  auth: ['signup + login + logout', 'rutas privadas protegidas', 'sesión persistente'],
+  database: ['crear tablas', 'políticas RLS por user_id', 'integrar cliente Supabase'],
+  hero: ['hero con título y subtítulo', 'dos CTAs', 'visual atractivo'],
+  cta: ['sección CTA destacada'],
+  pricing: ['tabla de planes', 'plan destacado'],
+  testimonials: ['carrusel de testimonios'],
+  faq: ['acordeón de preguntas frecuentes'],
+  dashboard: ['shell del dashboard', 'navegación lateral'],
+  kpis: ['tarjetas de KPIs principales'],
+  charts: ['gráficos interactivos'],
+  'data-table': ['tabla con orden y filtros'],
+  admin: ['panel /admin protegido', 'gestión de usuarios'],
+  pwa: ['manifest', 'service worker', 'app instalable'],
+  seo: ['meta tags', 'JSON-LD', 'H1 único'],
+};
+
+function inferChanges(module: string, intent: string): string[] {
+  return MODULE_CHANGES[module] ?? [intent.toLowerCase()];
+}
+
+/** Convierte un IntentPlan al contrato JSON canónico (español). */
+export function planToJson(plan: IntentPlan): IntentPlanJson {
+  return {
+    accion: plan.intent,
+    modulo: plan.module,
+    archivos: plan.filesAffected,
+    cambios: inferChanges(plan.module, plan.intent),
+    riesgo: RISK_ES[plan.risk],
+    creditos_estimados: plan.estimatedCredits,
+    resultado_esperado: plan.expectedOutcome,
+  };
+}
