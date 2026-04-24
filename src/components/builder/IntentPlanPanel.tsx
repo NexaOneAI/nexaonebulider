@@ -21,6 +21,7 @@ import {
   Check,
   ScanSearch,
   Lock,
+  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,6 +42,7 @@ import {
 } from '@/features/builder/intent/intentEngine';
 import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction';
 import { versionsService } from '@/features/projects/versionsService';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
