@@ -21,6 +21,7 @@ import {
   Check,
   ScanSearch,
   Lock,
+  ScrollText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -45,6 +46,8 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
 import { recordIntentAudit } from '@/features/audit/intentAuditService';
+import { logEventoIA } from '@/features/audit/nexaEventLogger';
+import { NexaEventLogPanel } from '@/components/builder/NexaEventLogPanel';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
@@ -79,6 +82,7 @@ export function IntentPlanPanel() {
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
+  const [logsOpen, setLogsOpen] = useState(false);
   /**
    * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
    * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
@@ -108,11 +112,22 @@ export function IntentPlanPanel() {
   // Snapshot reactivo — recalcula cuando cambia el proyecto.
   const [snap, setSnap] = useState<IntentSnapshot | null>(null);
   useEffect(() => {
+    const t0 = Date.now();
     const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
     setSnap(result);
     // Persistimos kind/level más recientes para que la memoria refleje el contexto.
     syncContext({ kind: result.kind, level: result.level }).catch(() => {});
-  }, [projectName, files, lastUserPrompt, acceptedIds, syncContext]);
+    // Log de análisis (no bloquea, sin proyectoId no persiste).
+    if (projectId && result.primary) {
+      logEventoIA({
+        tipo: 'analisis',
+        proyectoId: projectId,
+        plan: planToJson(result.primary),
+        duracionMs: Date.now() - t0,
+        meta: { kind: result.kind, level: result.level },
+      });
+    }
+  }, [projectName, files, lastUserPrompt, acceptedIds, syncContext, projectId]);
 
   // Preview diff ANTES vs DESPUÉS — clasifica cada archivo afectado.
   // (Hooks SIEMPRE antes de cualquier early return.)
@@ -166,6 +181,7 @@ export function IntentPlanPanel() {
     const json = planToJson(p);
     // Acción especial PWA — no consume créditos, no pasa por LLM.
     if (p.action.uiAction === 'activate-pwa') {
+      const t0 = Date.now();
       try {
         await activatePwaForCurrentProject();
         toast.success('PWA activada');
@@ -174,6 +190,13 @@ export function IntentPlanPanel() {
           projectId,
           planJson: json,
           metadata: { uiAction: 'activate-pwa' },
+        });
+        logEventoIA({
+          tipo: 'plan_aplicado',
+          proyectoId: projectId,
+          plan: json,
+          duracionMs: Date.now() - t0,
+          meta: { uiAction: 'activate-pwa' },
         });
       } catch (e) {
         recordIntentAudit({
@@ -184,12 +207,24 @@ export function IntentPlanPanel() {
           errorMessage: e instanceof Error ? e.message : String(e),
           metadata: { uiAction: 'activate-pwa' },
         });
+        logEventoIA({
+          tipo: 'error',
+          proyectoId: projectId,
+          plan: json,
+          resultado: 'fail',
+          duracionMs: Date.now() - t0,
+          meta: {
+            uiAction: 'activate-pwa',
+            error: e instanceof Error ? e.message : String(e),
+          },
+        });
         toast.error(e instanceof Error ? e.message : 'Error activando PWA');
       }
       return;
     }
     if (!chatOpen) toggleChat();
     toast.success(`Implementando: ${p.intent}`);
+    const t0 = Date.now();
     try {
       await sendPrompt(p.prompt);
       // Enriquecemos memoria: la sugerencia se aceptó y el módulo quedó instalado.
@@ -210,6 +245,17 @@ export function IntentPlanPanel() {
           estimatedCredits: p.estimatedCredits,
         },
       });
+      logEventoIA({
+        tipo: 'plan_aplicado',
+        proyectoId: projectId,
+        plan: json,
+        duracionMs: Date.now() - t0,
+        meta: {
+          actionId: p.action.id,
+          module: p.module,
+          estimatedCredits: p.estimatedCredits,
+        },
+      });
     } catch (e) {
       recordIntentAudit({
         eventType: 'apply_failed',
@@ -218,6 +264,18 @@ export function IntentPlanPanel() {
         status: 'failed',
         errorMessage: e instanceof Error ? e.message : String(e),
         metadata: { actionId: p.action.id, module: p.module },
+      });
+      logEventoIA({
+        tipo: 'error',
+        proyectoId: projectId,
+        plan: json,
+        resultado: 'fail',
+        duracionMs: Date.now() - t0,
+        meta: {
+          actionId: p.action.id,
+          module: p.module,
+          error: e instanceof Error ? e.message : String(e),
+        },
       });
       toast.error(e instanceof Error ? e.message : 'Error al implementar');
     }
@@ -553,6 +611,18 @@ export function IntentPlanPanel() {
               )}
               Revertir último cambio
             </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setLogsOpen(true)}
+              disabled={!projectId}
+              className="h-8 gap-1.5 text-muted-foreground hover:text-foreground"
+              data-testid="intent-view-logs"
+              title="Ver historial de eventos IA"
+            >
+              <ScrollText className="h-3.5 w-3.5" />
+              Historial
+            </Button>
 
             {snap.alternatives.length > 0 && (
               <div className="ml-auto flex items-center gap-1 overflow-x-auto">
@@ -701,6 +771,15 @@ export function IntentPlanPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Historial de eventos IA — trazabilidad completa */}
+      {projectId && (
+        <NexaEventLogPanel
+          open={logsOpen}
+          onClose={() => setLogsOpen(false)}
+          projectId={projectId}
+        />
+      )}
     </div>
   );
 }

@@ -20,6 +20,26 @@ const MEM_START = '<!-- NEXA_MEMORY_START -->';
 const MEM_END = '<!-- NEXA_MEMORY_END -->';
 const MEM_BLOCK_RE = new RegExp(`${MEM_START}[\\s\\S]*?${MEM_END}`, 'g');
 const MAX_HISTORY = 40;
+const MAX_LOGS = 100;
+
+// ---------------------------------------------------------------------------
+// Logging estructurado de eventos IA — vive dentro de NexaMemory.nexa_logs.
+// ---------------------------------------------------------------------------
+
+export type NexaLogTipo = 'plan_aplicado' | 'error' | 'analisis';
+export type NexaLogResultado = 'success' | 'fail';
+
+export interface NexaLogEvento {
+  tipo: NexaLogTipo;
+  accion: string;
+  archivos: string[];
+  resultado: NexaLogResultado;
+  duracion_ms: number;
+  timestamp: string; // ISO
+  proyectoId: string;
+  /** Detalles libres (módulo, créditos, error, etc.) */
+  meta?: Record<string, unknown>;
+}
 
 export interface InstalledModule {
   /** id lógico ("catalog", "cart", "auth", ...) */
@@ -84,6 +104,8 @@ export interface NexaMemory {
   decisions: ProjectDecision[];
   /** Historial cronológico (cap MAX_HISTORY) */
   history: MemoryActionEntry[];
+  /** Log estructurado de eventos IA (apply/analysis/error). */
+  nexa_logs: NexaLogEvento[];
   /** ISO timestamp del último cambio */
   updatedAt: string;
 }
@@ -97,6 +119,7 @@ export function emptyMemory(): NexaMemory {
     acceptedSuggestions: [],
     decisions: [],
     history: [],
+    nexa_logs: [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -117,6 +140,7 @@ export function parseMemoryFromContent(content: string | null | undefined): Nexa
       acceptedSuggestions: Array.isArray(parsed.acceptedSuggestions) ? parsed.acceptedSuggestions : [],
       decisions: Array.isArray(parsed.decisions) ? parsed.decisions : [],
       history: Array.isArray(parsed.history) ? parsed.history : [],
+      nexa_logs: Array.isArray(parsed.nexa_logs) ? parsed.nexa_logs : [],
     };
   } catch {
     return emptyMemory();
@@ -181,6 +205,10 @@ export async function updateMemory(
   // Cap history.
   if (next.history.length > MAX_HISTORY) {
     next.history = next.history.slice(next.history.length - MAX_HISTORY);
+  }
+  // Cap nexa_logs (más reciente al final).
+  if (next.nexa_logs.length > MAX_LOGS) {
+    next.nexa_logs = next.nexa_logs.slice(next.nexa_logs.length - MAX_LOGS);
   }
   const newContent = serializeMemoryIntoContent(row?.content ?? '', next);
   const { error } = await supabase
@@ -299,4 +327,9 @@ export function acceptedIds(mem: NexaMemory): Set<string> {
     if (m.actionId) ids.add(m.actionId);
   });
   return ids;
+}
+
+/** Anexa un evento al log estructurado del proyecto. */
+export function recordLogEvent(mem: NexaMemory, evento: NexaLogEvento): NexaMemory {
+  return { ...mem, nexa_logs: [...mem.nexa_logs, evento] };
 }
