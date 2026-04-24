@@ -210,7 +210,7 @@ export function IntentPlanPanel() {
           )}
 
           <div className="flex items-start gap-1.5 rounded-md border border-border/60 bg-card/60 px-2 py-1.5 text-[11px] text-muted-foreground">
-            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400" />
+            <CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
             <span>
               <span className="font-semibold text-foreground">Resultado esperado:</span>{' '}
               {plan.expectedOutcome}
