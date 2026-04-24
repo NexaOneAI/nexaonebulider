@@ -57,7 +57,7 @@ export async function recordIntentAudit(params: RecordParams): Promise<void> {
     const cambios = Array.isArray(json.cambios)
       ? (json.cambios as string[])
       : [];
-    const { error } = await supabase.from('intent_audit_logs').insert({
+    const row = {
       user_id: userId,
       project_id: params.projectId ?? null,
       event_type: params.eventType,
@@ -69,7 +69,9 @@ export async function recordIntentAudit(params: RecordParams): Promise<void> {
       status: params.status ?? 'success',
       error_message: params.errorMessage ?? null,
       metadata: params.metadata ?? {},
-    });
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase.from('intent_audit_logs') as any).insert(row);
     if (error) console.warn('[intent-audit] insert failed', error.message);
   } catch (e) {
     console.warn('[intent-audit] unexpected', e);
