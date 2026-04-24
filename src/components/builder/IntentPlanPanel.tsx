@@ -19,8 +19,19 @@ import {
   Code2,
   Copy,
   Check,
+  Eye as EyeIcon,
+  ScanSearch,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useBuilderStore } from '@/features/builder/builderStore';
 import {
   analyzeProject,
