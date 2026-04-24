@@ -128,6 +128,54 @@ export type Database = {
           },
         ]
       }
+      intent_audit_logs: {
+        Row: {
+          accion: string
+          archivos: Json
+          cambios: Json
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          metadata: Json | null
+          plan_json: Json
+          project_id: string | null
+          riesgo: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          accion: string
+          archivos?: Json
+          cambios?: Json
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          metadata?: Json | null
+          plan_json: Json
+          project_id?: string | null
+          riesgo?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          accion?: string
+          archivos?: Json
+          cambios?: Json
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          metadata?: Json | null
+          plan_json?: Json
+          project_id?: string | null
+          riesgo?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

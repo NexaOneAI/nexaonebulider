@@ -21,7 +21,6 @@ import {
   Check,
   ScanSearch,
   Lock,
-  Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,10 +41,10 @@ import {
 } from '@/features/builder/intent/intentEngine';
 import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction';
 import { versionsService } from '@/features/projects/versionsService';
-import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
+import { recordIntentAudit } from '@/features/audit/intentAuditService';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
@@ -80,17 +79,6 @@ export function IntentPlanPanel() {
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
   const [impactOpen, setImpactOpen] = useState(false);
-  const [aiAnalyzing, setAiAnalyzing] = useState(false);
-  /**
-   * Refinamiento opcional desde el endpoint estimate-cost (heurístico server-side).
-   * Solo se llama cuando el usuario pulsa "Analizar con IA". Si falla, mantenemos
-   * la estimación local para no bloquear al usuario y NO gastar créditos extra.
-   */
-  const [aiRefinement, setAiRefinement] = useState<{
-    credits: number;
-    complexity: string;
-    planId: string;
-  } | null>(null);
   /**
    * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
    * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
@@ -102,9 +90,10 @@ export function IntentPlanPanel() {
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
     acceptedIds,
+    registerAccepted,
+    registerModule,
     registerRevert,
     syncContext,
-    registerAppliedPlan,
   } = useNexaMemory(projectId);
 
   const lastUserPrompt = useMemo(() => {
@@ -160,37 +149,6 @@ export function IntentPlanPanel() {
     }
   };
 
-  /**
-   * Modo híbrido — refinamiento opcional bajo demanda.
-   * Llama a estimate-cost (heurística server, 0 créditos) con el prompt real
-   * del módulo. Si la respuesta llega, mostramos la nueva estimación; si falla,
-   * caemos en silencio a la estimación local. Nunca consume créditos del LLM.
-   */
-  const handleAnalyzeWithAi = async () => {
-    if (aiAnalyzing) return;
-    setAiAnalyzing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('estimate-cost', {
-        body: { prompt: plan.prompt, mode: 'edit' },
-      });
-      if (error) throw error;
-      const credits = Number(data?.cost ?? data?.credits);
-      if (!Number.isFinite(credits)) throw new Error('Respuesta inválida');
-      setAiRefinement({
-        credits,
-        complexity: String(data?.complexity ?? 'estimación'),
-        planId: plan.action.id,
-      });
-      toast.success('Análisis refinado sin gastar créditos de IA');
-    } catch (e) {
-      // Fallback silencioso: mantenemos la heurística local.
-      toast.info('No se pudo refinar con IA — usando estimación local');
-      console.warn('[intent] estimate-cost fallback', e);
-    } finally {
-      setAiAnalyzing(false);
-    }
-  };
-
   const handleConfirm = async (p: IntentPlan) => {
     if (busy) {
       toast.info('La IA está ocupada, espera a que termine');
@@ -205,27 +163,62 @@ export function IntentPlanPanel() {
       toast.info('Revisa el impacto antes de aplicar el cambio');
       return;
     }
+    const json = planToJson(p);
     // Acción especial PWA — no consume créditos, no pasa por LLM.
     if (p.action.uiAction === 'activate-pwa') {
       try {
         await activatePwaForCurrentProject();
         toast.success('PWA activada');
+        recordIntentAudit({
+          eventType: 'apply',
+          projectId,
+          planJson: json,
+          metadata: { uiAction: 'activate-pwa' },
+        });
       } catch (e) {
+        recordIntentAudit({
+          eventType: 'apply_failed',
+          projectId,
+          planJson: json,
+          status: 'failed',
+          errorMessage: e instanceof Error ? e.message : String(e),
+          metadata: { uiAction: 'activate-pwa' },
+        });
         toast.error(e instanceof Error ? e.message : 'Error activando PWA');
       }
       return;
     }
     if (!chatOpen) toggleChat();
-    // El JSON canónico del plan es la fuente única de verdad: lo usamos para
-    // ejecutar (sendPrompt), loggear y enriquecer memoria — sin duplicar lógica.
-    const json = planToJson(p);
-    console.info('[nexa-intent] applying plan', json);
-    toast.success(`Implementando: ${json.accion}`);
+    toast.success(`Implementando: ${p.intent}`);
     try {
       await sendPrompt(p.prompt);
-      // Memoria persistente desde el MISMO JSON que la UI muestra.
-      await registerAppliedPlan(json, { actionId: p.action.id });
+      // Enriquecemos memoria: la sugerencia se aceptó y el módulo quedó instalado.
+      await registerAccepted({ id: p.action.id, label: p.intent });
+      await registerModule({
+        id: p.module,
+        label: p.intent,
+        credits: p.estimatedCredits,
+        actionId: p.action.id,
+      });
+      recordIntentAudit({
+        eventType: 'apply',
+        projectId,
+        planJson: json,
+        metadata: {
+          actionId: p.action.id,
+          module: p.module,
+          estimatedCredits: p.estimatedCredits,
+        },
+      });
     } catch (e) {
+      recordIntentAudit({
+        eventType: 'apply_failed',
+        projectId,
+        planJson: json,
+        status: 'failed',
+        errorMessage: e instanceof Error ? e.message : String(e),
+        metadata: { actionId: p.action.id, module: p.module },
+      });
       toast.error(e instanceof Error ? e.message : 'Error al implementar');
     }
   };
@@ -250,6 +243,17 @@ export function IntentPlanPanel() {
       await loadVersion(target.id);
       toast.success(`Revertido a v${target.version_number}`);
       await registerRevert(`Revertido a v${target.version_number}`);
+      recordIntentAudit({
+        eventType: 'revert',
+        projectId,
+        planJson: {
+          accion: `Revertir a v${target.version_number}`,
+          archivos: [],
+          cambios: ['restaurar versión anterior'],
+          riesgo: 'bajo',
+        },
+        metadata: { versionId: target.id, versionNumber: target.version_number },
+      });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al revertir');
     } finally {
@@ -605,54 +609,13 @@ export function IntentPlanPanel() {
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <Coins className="mx-auto mb-1 h-3.5 w-3.5" />
-                {(() => {
-                  const useRefined =
-                    aiRefinement && aiRefinement.planId === plan.action.id;
-                  const value = useRefined ? aiRefinement.credits : plan.estimatedCredits;
-                  return (
-                    <span title={useRefined ? `Refinado: ${aiRefinement.complexity}` : 'Heurística local'}>
-                      {value === 0 ? 'Gratis' : `~${value} créditos`}
-                      {useRefined && (
-                        <span className="ml-1 rounded bg-primary/20 px-1 text-[9px] text-primary">
-                          IA
-                        </span>
-                      )}
-                    </span>
-                  );
-                })()}
+                {plan.estimatedCredits === 0 ? 'Gratis' : `~${plan.estimatedCredits} créditos`}
               </div>
               <div className="rounded border border-border bg-muted/40 p-2 text-center font-semibold text-foreground">
                 <FileEdit className="mx-auto mb-1 h-3.5 w-3.5" />
                 {createdCount + modifiedCount} archivo
                 {createdCount + modifiedCount !== 1 ? 's' : ''}
               </div>
-            </div>
-
-            {/* Modo híbrido — análisis bajo demanda, sin gasto automático */}
-            <div className="flex items-center justify-between rounded-md border border-border/60 bg-card/40 px-3 py-2 text-[11px]">
-              <div className="flex items-center gap-2">
-                <Brain className="h-3.5 w-3.5 text-primary" />
-                <span className="text-muted-foreground">
-                  Estimación local activa.{' '}
-                  <span className="text-foreground">
-                    Refina sin consumir créditos de IA si lo necesitas.
-                  </span>
-                </span>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={handleAnalyzeWithAi}
-                disabled={aiAnalyzing}
-                className="h-7 gap-1.5"
-              >
-                {aiAnalyzing ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Brain className="h-3 w-3" />
-                )}
-                Analizar con IA
-              </Button>
             </div>
 
             {/* Cambios conceptuales */}

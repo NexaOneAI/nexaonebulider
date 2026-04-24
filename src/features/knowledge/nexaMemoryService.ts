@@ -14,7 +14,6 @@
  */
 import { supabase } from '@/integrations/supabase/client';
 import type { AppKind, ProjectLevel } from '@/features/builder/suggestions/contextualActions';
-import type { IntentPlanJson } from '@/features/builder/intent/intentEngine';
 
 export const MEMORY_VERSION = 1;
 const MEM_START = '<!-- NEXA_MEMORY_START -->';
@@ -289,30 +288,6 @@ export function recordContext(
 ): NexaMemory {
   if (mem.projectKind === ctx.kind && mem.projectLevel === ctx.level) return mem;
   return { ...mem, projectKind: ctx.kind, projectLevel: ctx.level };
-}
-
-/**
- * Registra un plan aplicado usando el contrato canónico IntentPlanJson.
- * Combina sugerencia aceptada + módulo instalado + entrada de historial
- * a partir del MISMO JSON que la UI muestra y el motor genera. Evita que
- * cada consumidor (UI, logging, memoria) duplique lógica.
- */
-export function recordAppliedPlan(
-  mem: NexaMemory,
-  json: IntentPlanJson,
-  meta?: { actionId?: string },
-): NexaMemory {
-  let next = recordAcceptedSuggestion(mem, {
-    id: meta?.actionId ?? json.modulo,
-    label: json.accion,
-  });
-  next = recordInstalledModule(next, {
-    id: json.modulo,
-    label: json.accion,
-    credits: json.creditos_estimados,
-    actionId: meta?.actionId,
-  });
-  return next;
 }
 
 /** Conjunto de ids ya aceptados — usado por intentEngine para evitar duplicar sugerencias. */

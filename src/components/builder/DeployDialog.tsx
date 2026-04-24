@@ -16,6 +16,7 @@ import {
   type Deployment,
 } from '@/features/deploy/deployService';
 import type { GeneratedFile } from '@/features/projects/projectTypes';
+import { recordIntentAudit } from '@/features/audit/intentAuditService';
 
 interface Props {
   open: boolean;
@@ -61,8 +62,38 @@ export function DeployDialog({ open, onClose, projectId, projectName, files }: P
     try {
       const res = await deployToNetlify(projectId, projectName, files, lastLive?.site_id);
       toast.success('¡Desplegado!', { id: tid, description: res.url });
+      recordIntentAudit({
+        eventType: 'deploy',
+        projectId,
+        planJson: {
+          accion: `Deploy ${projectName} a Netlify`,
+          archivos: files.map((f) => f.path),
+          cambios: [`publicar ${files.length} archivo(s) a producción`],
+          riesgo: 'medio',
+        },
+        metadata: {
+          provider: 'netlify',
+          url: res.url,
+          siteId: res.siteId,
+          fileCount: files.length,
+          reusedSite: Boolean(lastLive?.site_id),
+        },
+      });
       await loadHistory();
     } catch (e) {
+      recordIntentAudit({
+        eventType: 'deploy_failed',
+        projectId,
+        planJson: {
+          accion: `Deploy ${projectName} a Netlify`,
+          archivos: files.map((f) => f.path),
+          cambios: [`publicar ${files.length} archivo(s) a producción`],
+          riesgo: 'medio',
+        },
+        status: 'failed',
+        errorMessage: e instanceof Error ? e.message : String(e),
+        metadata: { provider: 'netlify', fileCount: files.length },
+      });
       toast.error(e instanceof Error ? e.message : 'Deploy falló', { id: tid });
     } finally {
       setDeploying(false);

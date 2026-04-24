@@ -11,7 +11,6 @@ import {
   emptyMemory,
   loadMemory,
   recordAcceptedSuggestion,
-  recordAppliedPlan,
   recordContext,
   recordDecision,
   recordInstalledModule,
@@ -21,7 +20,6 @@ import {
   type NexaMemory,
 } from '@/features/knowledge/nexaMemoryService';
 import type { AppKind, ProjectLevel } from '@/features/builder/suggestions/contextualActions';
-import type { IntentPlanJson } from '@/features/builder/intent/intentEngine';
 
 export interface UseNexaMemory {
   memory: NexaMemory;
@@ -33,12 +31,6 @@ export interface UseNexaMemory {
   registerDecision: (d: { key: string; value: string }) => Promise<void>;
   registerRevert: (label: string) => Promise<void>;
   syncContext: (ctx: { kind: AppKind | null; level: ProjectLevel | null }) => Promise<void>;
-  /**
-   * Registra un plan completo (sugerencia aceptada + módulo instalado +
-   * historial) desde el contrato canónico del motor. Reusa el MISMO JSON
-   * que la UI muestra — fuente única de verdad.
-   */
-  registerAppliedPlan: (json: IntentPlanJson, meta?: { actionId?: string }) => Promise<void>;
 }
 
 export function useNexaMemory(projectId: string): UseNexaMemory {
@@ -101,11 +93,6 @@ export function useNexaMemory(projectId: string): UseNexaMemory {
       mutate((m) => recordContext(m, ctx)),
     [mutate],
   );
-  const registerAppliedPlan = useCallback(
-    (json: IntentPlanJson, meta?: { actionId?: string }) =>
-      mutate((m) => recordAppliedPlan(m, json, meta)),
-    [mutate],
-  );
 
   return {
     memory,
@@ -117,6 +104,5 @@ export function useNexaMemory(projectId: string): UseNexaMemory {
     registerDecision,
     registerRevert,
     syncContext,
-    registerAppliedPlan,
   };
 }
