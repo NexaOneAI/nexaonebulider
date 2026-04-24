@@ -60,6 +60,7 @@ export function IntentPlanPanel() {
 
   const [expanded, setExpanded] = useState(true);
   const [reverting, setReverting] = useState(false);
+  const [showDiff, setShowDiff] = useState(false);
 
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
