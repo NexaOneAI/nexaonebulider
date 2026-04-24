@@ -19,6 +19,7 @@ const Admin = lazy(() => import('@/pages/Admin'));
 const SharedPreview = lazy(() => import('@/pages/SharedPreview'));
 const NotFound = lazy(() => import('@/pages/NotFound'));
 const Pos = lazy(() => import('@/pages/Pos'));
+const SuggestionsDemo = lazy(() => import('@/pages/SuggestionsDemo'));
 
 const RouteFallback = () => (
   <div className="flex min-h-screen items-center justify-center bg-background">
@@ -45,6 +46,7 @@ export function AppRouter() {
           <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
           <Route path="/share/:token" element={<SharedPreview />} />
           <Route path="/pos" element={<Pos />} />
+          <Route path="/suggestions-demo" element={<SuggestionsDemo />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
