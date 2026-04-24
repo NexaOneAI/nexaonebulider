@@ -161,6 +161,37 @@ export function IntentPlanPanel() {
     }
   };
 
+  /**
+   * Modo híbrido — refinamiento opcional bajo demanda.
+   * Llama a estimate-cost (heurística server, 0 créditos) con el prompt real
+   * del módulo. Si la respuesta llega, mostramos la nueva estimación; si falla,
+   * caemos en silencio a la estimación local. Nunca consume créditos del LLM.
+   */
+  const handleAnalyzeWithAi = async () => {
+    if (aiAnalyzing) return;
+    setAiAnalyzing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('estimate-cost', {
+        body: { prompt: plan.prompt, mode: 'edit' },
+      });
+      if (error) throw error;
+      const credits = Number(data?.cost ?? data?.credits);
+      if (!Number.isFinite(credits)) throw new Error('Respuesta inválida');
+      setAiRefinement({
+        credits,
+        complexity: String(data?.complexity ?? 'estimación'),
+        planId: plan.action.id,
+      });
+      toast.success('Análisis refinado sin gastar créditos de IA');
+    } catch (e) {
+      // Fallback silencioso: mantenemos la heurística local.
+      toast.info('No se pudo refinar con IA — usando estimación local');
+      console.warn('[intent] estimate-cost fallback', e);
+    } finally {
+      setAiAnalyzing(false);
+    }
+  };
+
   const handleConfirm = async (p: IntentPlan) => {
     if (busy) {
       toast.info('La IA está ocupada, espera a que termine');
