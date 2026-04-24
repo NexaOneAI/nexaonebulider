@@ -153,6 +153,15 @@ export function IntentPlanPanel() {
       toast.info('La IA está ocupada, espera a que termine');
       return;
     }
+    // Acciones que tocan código requieren revisión de impacto previa.
+    // PWA y similares (uiAction local sin LLM) están exentas porque no
+    // generan diff de archivos del proyecto.
+    const requiresReview = !p.action.uiAction;
+    if (requiresReview && !reviewedPlanIds.has(p.action.id)) {
+      setImpactOpen(true);
+      toast.info('Revisa el impacto antes de aplicar el cambio');
+      return;
+    }
     // Acción especial PWA — no consume créditos, no pasa por LLM.
     if (p.action.uiAction === 'activate-pwa') {
       try {
