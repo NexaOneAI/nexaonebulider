@@ -116,6 +116,19 @@ export function IntentPlanPanel() {
   const plan = snap.primary;
   const createdCount = diffEntries.filter((d) => d.kind === 'created').length;
   const modifiedCount = diffEntries.filter((d) => d.kind === 'modified').length;
+  const planJson = planToJson(plan);
+  const planJsonStr = JSON.stringify(planJson, null, 2);
+
+  const handleCopyJson = async () => {
+    try {
+      await navigator.clipboard.writeText(planJsonStr);
+      setCopied(true);
+      toast.success('JSON copiado');
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      toast.error('No se pudo copiar');
+    }
+  };
 
   const handleConfirm = async (p: IntentPlan) => {
     if (busy) {
