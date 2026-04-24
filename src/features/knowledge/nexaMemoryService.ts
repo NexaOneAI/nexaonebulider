@@ -206,6 +206,10 @@ export async function updateMemory(
   if (next.history.length > MAX_HISTORY) {
     next.history = next.history.slice(next.history.length - MAX_HISTORY);
   }
+  // Cap nexa_logs (más reciente al final).
+  if (next.nexa_logs.length > MAX_LOGS) {
+    next.nexa_logs = next.nexa_logs.slice(next.nexa_logs.length - MAX_LOGS);
+  }
   const newContent = serializeMemoryIntoContent(row?.content ?? '', next);
   const { error } = await supabase
     .from('project_knowledge')
