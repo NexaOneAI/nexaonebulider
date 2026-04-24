@@ -29,6 +29,8 @@ import { KnowledgeDialog } from './KnowledgeDialog';
 import {
   getQuickActions,
   type QuickAction,
+  LEVEL_LABELS,
+  type ProjectLevel,
 } from '@/features/builder/suggestions/contextualActions';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -118,11 +120,13 @@ export function QuickActionsBar() {
   // React data-flow pattern: state changes → effect → setState → re-render.)
   const [kind, setKind] = useState<string>('unknown');
   const [actions, setActions] = useState<QuickAction[]>([]);
+  const [level, setLevel] = useState<ProjectLevel>('empty');
 
   useEffect(() => {
     const result = getQuickActions(projectName, files, { lastUserPrompt });
     setKind(result.kind);
     setActions(result.actions);
+    setLevel(result.level);
   }, [projectName, files, lastUserPrompt]);
 
   // Diagnostic log — helps verify the suggestions actually reactively change.
@@ -219,6 +223,13 @@ export function QuickActionsBar() {
           title="Tipo de proyecto detectado automáticamente desde nombre, archivos y conversación"
         >
           Tipo detectado: {KIND_LABELS[kind] ?? 'App'}
+        </span>
+        <span
+          data-testid="detected-level"
+          className="rounded border border-accent/40 bg-accent/15 px-2 py-0.5 text-[10px] font-bold text-accent"
+          title="Nivel de progreso del proyecto — las sugerencias avanzan según evoluciona"
+        >
+          Nivel: {LEVEL_LABELS[level]}
         </span>
       </div>
 
