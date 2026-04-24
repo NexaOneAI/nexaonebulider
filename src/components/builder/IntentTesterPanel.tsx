@@ -23,6 +23,8 @@ import { activatePwaForCurrentProject } from '@/features/builder/store/pwaAction
 import { versionsService } from '@/features/projects/versionsService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useNexaMemory } from '@/hooks/useNexaMemory';
+import { Brain, History } from 'lucide-react';
 
 /**
  * Banco de pruebas visible del motor de intención. Vive como tarjeta dentro
@@ -49,6 +51,15 @@ export function IntentTesterPanel() {
   const [analyzing, setAnalyzing] = useState(false);
   const [reverting, setReverting] = useState(false);
 
+  const {
+    memory,
+    acceptedIds,
+    registerAccepted,
+    registerModule,
+    registerRevert,
+    syncContext,
+  } = useNexaMemory(projectId);
+
   const busy = loading || streaming;
 
   const lastUserPrompt = (() => {
@@ -67,8 +78,9 @@ export function IntentTesterPanel() {
     }
     setAnalyzing(true);
     try {
-      const result = analyzeProject({ projectName, files, lastUserPrompt });
+      const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
       setSnap(result);
+      syncContext({ kind: result.kind, level: result.level }).catch(() => {});
       if (!result.primary) {
         toast.info('El proyecto está vacío — genera o abre archivos primero');
       } else {
@@ -104,6 +116,13 @@ export function IntentTesterPanel() {
     toast.success(`Aplicando: ${plan.intent}`);
     try {
       await sendPrompt(plan.prompt);
+      await registerAccepted({ id: plan.action.id, label: plan.intent });
+      await registerModule({
+        id: plan.module,
+        label: plan.intent,
+        credits: plan.estimatedCredits,
+        actionId: plan.action.id,
+      });
       // Re-analizar tras aplicar para ver el nuevo nivel/sugerencia.
       setTimeout(() => handleAnalyze(), 500);
     } catch (e) {
@@ -124,6 +143,7 @@ export function IntentTesterPanel() {
       const target = versions[1];
       await loadVersion(target.id);
       toast.success(`Revertido a v${target.version_number}`);
+      await registerRevert(`Revertido a v${target.version_number}`);
       setSnap(null);
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al revertir');
