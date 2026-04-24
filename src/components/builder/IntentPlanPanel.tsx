@@ -102,10 +102,9 @@ export function IntentPlanPanel() {
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
     acceptedIds,
-    registerAccepted,
-    registerModule,
     registerRevert,
     syncContext,
+    registerAppliedPlan,
   } = useNexaMemory(projectId);
 
   const lastUserPrompt = useMemo(() => {
@@ -217,17 +216,15 @@ export function IntentPlanPanel() {
       return;
     }
     if (!chatOpen) toggleChat();
-    toast.success(`Implementando: ${p.intent}`);
+    // El JSON canónico del plan es la fuente única de verdad: lo usamos para
+    // ejecutar (sendPrompt), loggear y enriquecer memoria — sin duplicar lógica.
+    const json = planToJson(p);
+    console.info('[nexa-intent] applying plan', json);
+    toast.success(`Implementando: ${json.accion}`);
     try {
       await sendPrompt(p.prompt);
-      // Enriquecemos memoria: la sugerencia se aceptó y el módulo quedó instalado.
-      await registerAccepted({ id: p.action.id, label: p.intent });
-      await registerModule({
-        id: p.module,
-        label: p.intent,
-        credits: p.estimatedCredits,
-        actionId: p.action.id,
-      });
+      // Memoria persistente desde el MISMO JSON que la UI muestra.
+      await registerAppliedPlan(json, { actionId: p.action.id });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Error al implementar');
     }
