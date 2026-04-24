@@ -271,8 +271,14 @@ export function analyzeProject(input: {
   projectName: string;
   files: GeneratedFile[];
   lastUserPrompt?: string;
+  /**
+   * Ids de sugerencias / módulos ya aceptados — permite que el motor evite
+   * recomendar dos veces lo mismo (memoria acumulativa). Se compara contra
+   * `action.id` y contra el `module` derivado.
+   */
+  acceptedIds?: Set<string>;
 }): IntentSnapshot {
-  const { projectName, files, lastUserPrompt = '' } = input;
+  const { projectName, files, lastUserPrompt = '', acceptedIds } = input;
   const kind = detectAppKind(projectName, files, { lastUserPrompt });
   const signals = detectProjectSignals(files);
   const level = obtenerNivelProyecto({ kind, signals });
@@ -281,7 +287,16 @@ export function analyzeProject(input: {
   // El primer action ya es el "siguiente paso lógico" porque getQuickActions
   // antepone level-actions sobre kind-actions sobre base. Si no hay prompt,
   // pasa null (no debería pasar mientras haya files).
-  const actionable = actions.filter((a) => !a.uiAction || a.uiAction === 'activate-pwa');
+  let actionable = actions.filter((a) => !a.uiAction || a.uiAction === 'activate-pwa');
+  if (acceptedIds && acceptedIds.size > 0) {
+    const filtered = actionable.filter((a) => {
+      const mod = ACTION_MODULE[a.id] ?? a.id;
+      return !acceptedIds.has(a.id) && !acceptedIds.has(mod);
+    });
+    // Si TODO está aceptado, mantenemos el comportamiento original para no
+    // dejar al usuario sin sugerencias (evita pantalla vacía).
+    if (filtered.length > 0) actionable = filtered;
+  }
   const primary = actionable[0]
     ? buildPlan(actionable[0], level, kind, signals, files)
     : null;
