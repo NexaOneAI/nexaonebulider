@@ -77,6 +77,14 @@ export function IntentPlanPanel() {
   const [showDiff, setShowDiff] = useState(false);
   const [showJson, setShowJson] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [impactOpen, setImpactOpen] = useState(false);
+  /**
+   * Set de planes (por action.id) cuyo impacto el usuario ya revisó.
+   * Bloqueamos "Aplicar" hasta que la acción específica esté en este set.
+   * Al cambiar el snapshot (nuevo plan recomendado), se resetea implícitamente
+   * porque el id cambia.
+   */
+  const [reviewedPlanIds, setReviewedPlanIds] = useState<Set<string>>(new Set());
 
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
