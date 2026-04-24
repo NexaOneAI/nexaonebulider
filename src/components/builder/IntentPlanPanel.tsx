@@ -25,7 +25,6 @@ import { versionsService } from '@/features/projects/versionsService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
-import { Brain } from 'lucide-react';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
@@ -59,7 +58,6 @@ export function IntentPlanPanel() {
 
   // Memoria persistente del proyecto (Nexa Intelligence).
   const {
-    memory,
     acceptedIds,
     registerAccepted,
     registerModule,
