@@ -44,6 +44,7 @@ import { versionsService } from '@/features/projects/versionsService';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useNexaMemory } from '@/hooks/useNexaMemory';
+import { recordIntentAudit } from '@/features/audit/intentAuditService';
 
 /**
  * Panel "Próximo paso recomendado" — el copiloto inteligente de Nexa One.
