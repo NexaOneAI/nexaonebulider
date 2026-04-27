@@ -68,6 +68,20 @@ export async function runStreamEdit({
   let blocksApplied = 0;
   let blocksFailed = 0;
 
+  // Debounce de regeneración del preview (anti-OOM): no recompilamos el HTML
+  // por cada bloque que llega del stream. Solo actualizamos files; el preview
+  // se recalcula como mucho cada 800ms y al terminar (autoritativo).
+  let previewTimer: ReturnType<typeof setTimeout> | null = null;
+  const schedulePreviewRefresh = () => {
+    if (previewTimer) return;
+    previewTimer = setTimeout(() => {
+      previewTimer = null;
+      const arr = Array.from(working.values());
+      const previewCode = generatePreviewHtml(arr, store.getState().projectName, model);
+      store.setState({ previewCode });
+    }, 800);
+  };
+
   try {
     const done = await editAppStream(
       {
@@ -126,18 +140,18 @@ export async function runStreamEdit({
             blocksApplied += 1;
           }
 
-          // Push optimistic preview update every block
+          // Optimistic file update por bloque, pero el iframe solo se
+          // re-renderiza con debounce (800ms) para evitar OOM en producción.
           const arr = Array.from(working.values());
-          const previewCode = generatePreviewHtml(arr, store.getState().projectName, model);
           store.setState((s) => ({
             files: arr,
-            previewCode,
             previewError: null,
             streamingBlocks: {
               ...s.streamingBlocks,
               [block.path]: (s.streamingBlocks[block.path] || 0) + 1,
             },
           }));
+          schedulePreviewRefresh();
         },
         onImage: (img) => {
           updateAssistant(`🖼️ Imagen generada (${img.placement}). El modelo la insertará en el código…`);
@@ -145,6 +159,10 @@ export async function runStreamEdit({
         onError: (msg) => updateAssistant(`❌ ${msg}`),
       },
     );
+    if (previewTimer) {
+      clearTimeout(previewTimer);
+      previewTimer = null;
+    }
 
     if (!done) {
       // Fallback: server didn't emit final done event
