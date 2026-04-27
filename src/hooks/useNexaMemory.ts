@@ -4,8 +4,16 @@
  * Carga la memoria al montar (y cuando cambia projectId) y expone helpers
  * declarativos para que los paneles registren sugerencias aceptadas, módulos
  * instalados, decisiones y reverts SIN tocar el shape directamente.
+ *
+ * IMPORTANTE (estabilidad / OOM):
+ *  - `acceptedIds` se memoiza por referencia para que los `useEffect` que
+ *    dependen de él NO se disparen en cada render (esto causaba un loop de
+ *    `updateMemory` → `AbortError: Lock broken` en producción).
+ *  - Los mutators se serializan en una cola por proyecto: nunca corren dos
+ *    `loadMemory + upsert` concurrentes contra Supabase, evitando contención
+ *    del web-lock de auth.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import {
   emptyMemory,
@@ -38,6 +46,9 @@ export function useNexaMemory(projectId: string): UseNexaMemory {
   const [memory, setMemory] = useState<NexaMemory>(emptyMemory);
   const [loading, setLoading] = useState(false);
 
+  // FIFO queue per hook instance — serializa los upserts contra Supabase.
+  const queueRef = useRef<Promise<unknown>>(Promise.resolve());
+
   const refresh = useCallback(async () => {
     if (!projectId) {
       setMemory(emptyMemory());
@@ -59,14 +70,18 @@ export function useNexaMemory(projectId: string): UseNexaMemory {
   }, [refresh]);
 
   const mutate = useCallback(
-    async (mut: (m: NexaMemory) => NexaMemory) => {
-      if (!projectId || !user?.id) return;
-      try {
-        const next = await updateMemory(projectId, user.id, mut);
-        setMemory(next);
-      } catch (e) {
-        console.warn('[nexa-memory] update failed', e);
-      }
+    (mut: (m: NexaMemory) => NexaMemory) => {
+      if (!projectId || !user?.id) return Promise.resolve();
+      const next = queueRef.current.then(async () => {
+        try {
+          const updated = await updateMemory(projectId, user.id, mut);
+          setMemory(updated);
+        } catch (e) {
+          console.warn('[nexa-memory] update failed', e);
+        }
+      });
+      queueRef.current = next.catch(() => undefined);
+      return next;
     },
     [projectId, user?.id],
   );
@@ -88,16 +103,28 @@ export function useNexaMemory(projectId: string): UseNexaMemory {
     (label: string) => mutate((m) => recordRevert(m, label)),
     [mutate],
   );
+  // syncContext se llama en cada cambio de archivos. Evitamos persistir si
+  // el contexto ya coincide con el último valor (no-op silencioso).
+  const lastCtxRef = useRef<{ kind: AppKind | null; level: ProjectLevel | null } | null>(null);
   const syncContext = useCallback(
-    (ctx: { kind: AppKind | null; level: ProjectLevel | null }) =>
-      mutate((m) => recordContext(m, ctx)),
+    (ctx: { kind: AppKind | null; level: ProjectLevel | null }) => {
+      const last = lastCtxRef.current;
+      if (last && last.kind === ctx.kind && last.level === ctx.level) {
+        return Promise.resolve();
+      }
+      lastCtxRef.current = ctx;
+      return mutate((m) => recordContext(m, ctx));
+    },
     [mutate],
   );
+
+  // Memoizamos acceptedIds para que `useEffect` consumidores no entren en loop.
+  const accepted = useMemo(() => acceptedIdsFn(memory), [memory]);
 
   return {
     memory,
     loading,
-    acceptedIds: acceptedIdsFn(memory),
+    acceptedIds: accepted,
     refresh,
     registerAccepted,
     registerModule,
