@@ -46,6 +46,26 @@ export class ErrorBoundary extends Component<Props, State> {
     }
   };
 
+  handleClearLocal = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      if ('caches' in window) {
+        caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {});
+      }
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker
+          .getRegistrations()
+          .then((regs) => regs.forEach((r) => r.unregister()))
+          .catch(() => {});
+      }
+    } catch {
+      /* ignore */
+    } finally {
+      window.location.reload();
+    }
+  };
+
   render() {
     if (!this.state.hasError) return this.props.children;
     if (this.props.fallback) return this.props.fallback;
@@ -106,22 +126,40 @@ export class ErrorBoundary extends Component<Props, State> {
               {this.state.error.message}
             </pre>
           )}
-          <button
-            type="button"
-            onClick={this.handleReload}
-            style={{
-              padding: '10px 20px',
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #1e90ff, #8a4dff)',
-              color: '#fff',
-              border: 'none',
-              fontSize: 14,
-              fontWeight: 500,
-              cursor: 'pointer',
-            }}
-          >
-            Recargar aplicación
-          </button>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              onClick={this.handleReload}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #1e90ff, #8a4dff)',
+                color: '#fff',
+                border: 'none',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Recargar preview
+            </button>
+            <button
+              type="button"
+              onClick={this.handleClearLocal}
+              style={{
+                padding: '10px 20px',
+                borderRadius: 8,
+                background: 'rgba(255,255,255,0.06)',
+                color: '#e6e7ea',
+                border: '1px solid rgba(255,255,255,0.12)',
+                fontSize: 14,
+                fontWeight: 500,
+                cursor: 'pointer',
+              }}
+            >
+              Limpiar sesión local
+            </button>
+          </div>
         </div>
       </div>
     );

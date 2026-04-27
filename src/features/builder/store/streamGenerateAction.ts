@@ -47,8 +47,9 @@ export async function runStreamGenerate({
   const result = await aiService.generateAppStream(prompt, model, {
     projectId,
     userTier,
-    onToken: (delta) => {
-      store.setState((s) => ({ streamBuffer: s.streamBuffer + delta }));
+    onToken: (_delta) => {
+      // Anti-OOM: NO acumulamos el buffer completo en el store. Solo
+      // refrescamos el placeholder del mensaje del asistente.
       updateAssistant('⚡ Generando código...');
     },
     onFile: (f) => {

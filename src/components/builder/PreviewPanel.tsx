@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
@@ -225,6 +225,15 @@ export function PreviewPanel() {
   const hasContent = Boolean(previewCode) || files.length > 0;
   const showingCode = showCode && Boolean(selectedFile);
 
+  // Guardas anti-OOM para el iframe del preview.
+  const PREVIEW_FILE_LIMIT = 25;
+  const PREVIEW_FILE_SIZE_LIMIT = 500 * 1024; // 500 KB
+  const previewTooHeavy = useMemo(() => {
+    if (files.length === 0) return false;
+    if (files.length > PREVIEW_FILE_LIMIT) return true;
+    return files.some((f) => (f.content?.length ?? 0) > PREVIEW_FILE_SIZE_LIMIT);
+  }, [files]);
+
   const errorCount = events.filter(
     (e) => (e.type === 'console' && e.level === 'error') || (e.type === 'network' && (e.error || (e.status && e.status >= 400))),
   ).length;
@@ -363,6 +372,23 @@ export function PreviewPanel() {
                 >
                   <WebContainerPreview files={files} projectName="Preview" projectId={projectId} />
                 </Suspense>
+              ) : previewTooHeavy ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-6 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15">
+                    <Monitor className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Proyecto pesado</h3>
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                      Tu proyecto tiene {files.length} archivos. Para evitar problemas de memoria
+                      el preview se desactivó. Abre el código o reduce los archivos para volver a
+                      previsualizar.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCode(true)}>
+                    <Code2 className="mr-1 h-3 w-3" /> Abrir código
+                  </Button>
+                </div>
               ) : previewCode ? (
                 <PreviewFrame frame={frame}>
                   <iframe

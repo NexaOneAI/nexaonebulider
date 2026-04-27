@@ -56,9 +56,14 @@ export function ChatPanel() {
     return subscribeChatCutoff(() => setCutoffState(getChatCutoff(projectId)));
   }, [projectId]);
 
+  // Render-cap: solo mostramos los últimos 50 mensajes para evitar DOM masivo
+  // (anti-OOM). El cutoff de "nueva conversación" sigue aplicándose primero.
+  const MAX_VISIBLE = 50;
   const visibleMessages = useMemo(() => {
-    if (!cutoff) return messages;
-    return messages.filter((m) => (m.created_at || '') > cutoff);
+    const filtered = cutoff
+      ? messages.filter((m) => (m.created_at || '') > cutoff)
+      : messages;
+    return filtered.length > MAX_VISIBLE ? filtered.slice(-MAX_VISIBLE) : filtered;
   }, [messages, cutoff]);
 
   const hiddenCount = messages.length - visibleMessages.length;

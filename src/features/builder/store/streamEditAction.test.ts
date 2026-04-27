@@ -148,8 +148,9 @@ describe('runStreamEdit — strategy A (progressive)', () => {
     });
 
     expect(res.ok).toBe(true);
-    // 2 invocaciones por block + 1 final con done.files = 3
-    expect(generatePreviewHtml).toHaveBeenCalledTimes(3);
+    // Anti-OOM: las regeneraciones por bloque están debounced (800ms) y se
+    // cancelan cuando llega `done`. Solo el reconcile final ejecuta el HTML.
+    expect(generatePreviewHtml).toHaveBeenCalledTimes(1);
 
     // Estado final viene del `done` (autoritativo del server)
     expect(store._state.files).toEqual(fakeDoneFiles);
@@ -204,8 +205,8 @@ describe('runStreamEdit — strategy A (progressive)', () => {
 
     // Tras borrar quedaba solo App.tsx; luego done sobreescribe con fakeDoneFiles
     expect(store._state.files).toEqual(fakeDoneFiles);
-    // 1 por el block delete + 1 por done
-    expect(generatePreviewHtml).toHaveBeenCalledTimes(2);
+    // Debounced: solo el done autoritativo regenera preview.
+    expect(generatePreviewHtml).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Sparkles,
   ShieldAlert,
@@ -109,24 +109,32 @@ export function IntentPlanPanel() {
     return '';
   }, [messages]);
 
-  // Snapshot reactivo — recalcula cuando cambia el proyecto.
+  // Snapshot reactivo — recalcula cuando cambia el proyecto. Debounced (400ms)
+  // para no recomputar y no escribir memoria/logs en cada keystroke o token.
   const [snap, setSnap] = useState<IntentSnapshot | null>(null);
+  // Evita loggear el mismo análisis dos veces (mismo action.id + files length).
+  const lastLoggedRef = useRef<string | null>(null);
   useEffect(() => {
-    const t0 = Date.now();
-    const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
-    setSnap(result);
-    // Persistimos kind/level más recientes para que la memoria refleje el contexto.
-    syncContext({ kind: result.kind, level: result.level }).catch(() => {});
-    // Log de análisis (no bloquea, sin proyectoId no persiste).
-    if (projectId && result.primary) {
-      logEventoIA({
-        tipo: 'analisis',
-        proyectoId: projectId,
-        plan: planToJson(result.primary),
-        duracionMs: Date.now() - t0,
-        meta: { kind: result.kind, level: result.level },
-      });
-    }
+    const handle = window.setTimeout(() => {
+      const t0 = Date.now();
+      const result = analyzeProject({ projectName, files, lastUserPrompt, acceptedIds });
+      setSnap(result);
+      syncContext({ kind: result.kind, level: result.level }).catch(() => {});
+      if (projectId && result.primary) {
+        const sig = `${result.primary.action.id}:${files.length}`;
+        if (lastLoggedRef.current !== sig) {
+          lastLoggedRef.current = sig;
+          logEventoIA({
+            tipo: 'analisis',
+            proyectoId: projectId,
+            plan: planToJson(result.primary),
+            duracionMs: Date.now() - t0,
+            meta: { kind: result.kind, level: result.level },
+          });
+        }
+      }
+    }, 400);
+    return () => window.clearTimeout(handle);
   }, [projectName, files, lastUserPrompt, acceptedIds, syncContext, projectId]);
 
   // Preview diff ANTES vs DESPUÉS — clasifica cada archivo afectado.
