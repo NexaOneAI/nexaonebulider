@@ -87,9 +87,11 @@ export function VersionHistory({ open, onClose }: Props) {
     };
   }, [open, projectId]);
 
+  // Render-cap: solo mostramos los últimos 20 cambios visibles (anti-OOM).
+  const MAX_VISIBLE_VERSIONS = 20;
   const filtered = useMemo(() => {
-    if (filter === 'all') return versions;
-    return versions.filter((v) => classifyVersion(v) === filter);
+    const base = filter === 'all' ? versions : versions.filter((v) => classifyVersion(v) === filter);
+    return base.length > MAX_VISIBLE_VERSIONS ? base.slice(0, MAX_VISIBLE_VERSIONS) : base;
   }, [versions, filter]);
 
   const counts = useMemo(() => {
