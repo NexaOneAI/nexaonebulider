@@ -67,13 +67,17 @@ export function NexaEventLogPanel({ open, onClose, projectId }: Props) {
   const [loading, setLoading] = useState(false);
   const [filtro, setFiltro] = useState<FiltroResultado>('todos');
 
+  // Render-cap: solo guardamos los últimos 100 eventos para que el panel
+  // nunca renderice listas gigantes (anti-OOM).
+  const MAX_LOGS = 100;
+
   const refresh = async () => {
     if (!projectId) return;
     setLoading(true);
     try {
       const data = await listEventosIA(projectId);
-      // Más reciente primero.
-      setLogs([...data].reverse());
+      const recent = data.slice(-MAX_LOGS).reverse(); // más reciente primero
+      setLogs(recent);
     } finally {
       setLoading(false);
     }
