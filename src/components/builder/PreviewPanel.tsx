@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useBuilder } from '@/hooks/useBuilder';
 import { CodeEditor } from './CodeEditor';
 import { DevToolsPanel } from './DevToolsPanel';
@@ -224,6 +224,15 @@ export function PreviewPanel() {
 
   const hasContent = Boolean(previewCode) || files.length > 0;
   const showingCode = showCode && Boolean(selectedFile);
+
+  // Guardas anti-OOM para el iframe del preview.
+  const PREVIEW_FILE_LIMIT = 25;
+  const PREVIEW_FILE_SIZE_LIMIT = 500 * 1024; // 500 KB
+  const previewTooHeavy = useMemo(() => {
+    if (files.length === 0) return false;
+    if (files.length > PREVIEW_FILE_LIMIT) return true;
+    return files.some((f) => (f.content?.length ?? 0) > PREVIEW_FILE_SIZE_LIMIT);
+  }, [files]);
 
   const errorCount = events.filter(
     (e) => (e.type === 'console' && e.level === 'error') || (e.type === 'network' && (e.error || (e.status && e.status >= 400))),
