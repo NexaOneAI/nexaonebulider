@@ -372,6 +372,23 @@ export function PreviewPanel() {
                 >
                   <WebContainerPreview files={files} projectName="Preview" projectId={projectId} />
                 </Suspense>
+              ) : previewTooHeavy ? (
+                <div className="flex h-full flex-col items-center justify-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-6 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/15">
+                    <Monitor className="h-6 w-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-foreground">Proyecto pesado</h3>
+                    <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+                      Tu proyecto tiene {files.length} archivos. Para evitar problemas de memoria
+                      el preview se desactivó. Abre el código o reduce los archivos para volver a
+                      previsualizar.
+                    </p>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setShowCode(true)}>
+                    <Code2 className="mr-1 h-3 w-3" /> Abrir código
+                  </Button>
+                </div>
               ) : previewCode ? (
                 <PreviewFrame frame={frame}>
                   <iframe
